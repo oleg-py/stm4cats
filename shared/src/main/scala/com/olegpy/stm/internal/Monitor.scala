@@ -23,7 +23,3 @@ class Monitor private[stm] () {
     }
   }
 }
-
-object Monitor {
-  def apply[F[_]: Sync]: F[Monitor] = Sync[F].delay(new Monitor)
-}

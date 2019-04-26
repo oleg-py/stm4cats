@@ -14,8 +14,12 @@ lazy val stm4cats = crossProject(JSPlatform, JVMPlatform)
   .in(file("."))
   .settings(
     name := "stm4cats",
-    libraryDependencies +=
+    libraryDependencies ++= Seq(
       "org.typelevel" %%% "cats-effect" % "1.2.0",
+      "com.lihaoyi" %%% "utest" % "0.6.7" % Test,
+    ),
+
+    testFrameworks += new TestFramework("utest.runner.Framework"),
 
     scalacOptions --= Seq(
       "-Xfatal-warnings",

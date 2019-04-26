@@ -2,11 +2,12 @@ package com.olegpy.stm
 
 import cats.effect.Sync
 import internal.TRefImpl
-
+import cats.implicits._
 
 trait TRef[A] {
   def get: STM[A]
   def set(a: A): STM[Unit]
+  def modify(f: A => A): STM[Unit] = get >>= (f >>> set)
 }
 
 object TRef {
@@ -15,6 +16,6 @@ object TRef {
 
   final class InPartiallyApplied[F[_]](private val dummy: Boolean = false) extends AnyVal {
     def apply[A](initial: A)(implicit F: Sync[F]): F[TRef[A]] =
-      F.delay(new TRefImpl(initial))
+      F.delay(STM.store.transact { new TRefImpl(initial) })
   }
 }

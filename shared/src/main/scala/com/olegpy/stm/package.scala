@@ -13,6 +13,8 @@ package object stm {
     trait Tag extends Any
     type Of[+A] <: Base with Tag
 
+    def pure[A](a: A): STM[A] = wrap(IO.pure(a))
+    val unit: STM[Unit] = wrap(IO.unit)
     val retry: STM[Nothing] = delay { throw Retry }
     def check(c: Boolean): STM[Unit] = retry.whenA(c)
 
@@ -53,7 +55,7 @@ package object stm {
     private[this] def wrap[A](io: IO[A]): STM[A] = io.asInstanceOf[STM[A]]
     private[this] def expose[A](stm: STM[_ >: A]): IO[A] = stm.asInstanceOf[IO[A]]
 
-    private[stm] val store: Store = Store.forPlatform()
+    private[stm] val store: Store = /*_*/Store.forPlatform()/*_*/
     private[stm] def delay[A](a: => A): STM[A] = wrap(IO(a))
 
     private[this] val globalLock = new Monitor
