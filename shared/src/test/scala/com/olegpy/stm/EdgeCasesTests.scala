@@ -19,6 +19,16 @@ object EdgeCasesTests extends TestSuite with BaseIOSuite {
         .map { x => assert(x == 0) }
     }
 
+    "commit fails on aborts"- ioTest {
+      for {
+        s <- TRef.in[IO](0)
+        _ <- STM.atomically[IO] {
+               s.set(5) >> STM.abort(new Exception("Transaction aborted"))
+             }.attempt
+        r <- s.get.commit[IO]
+      } yield assert(r == 0)
+    }
+
     "retries are actually cancellable" - ioTest {
       for {
         x <- TRef.in[IO](0)

@@ -17,6 +17,7 @@ package object stm {
     val unit: STM[Unit] = wrap(IO.unit)
     val retry: STM[Nothing] = delay { throw Retry }
     def check(c: Boolean): STM[Unit] = retry.whenA(c)
+    def abort[A](ex: Throwable): STM[A] = wrap(IO.raiseError(ex))
 
     def atomically[F[_]] = new AtomicallyFn[F]
 
