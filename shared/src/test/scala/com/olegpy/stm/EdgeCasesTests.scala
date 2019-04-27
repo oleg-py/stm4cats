@@ -20,7 +20,6 @@ object EdgeCasesTests extends TestSuite with BaseIOSuite {
     }
 
     "retries are actually cancellable" - ioTest {
-      // TODO - broken on SJS?
       for {
         x <- TRef.in[IO](0)
         upd <- (x.modify(_ + 1).commit[IO] >> IO.sleep(20.millis)).replicateA(10).start
@@ -30,6 +29,7 @@ object EdgeCasesTests extends TestSuite with BaseIOSuite {
             case _ => fail
           }
           .start
+        _ <- IO.sleep(1.millisecond)
         _ <- f1.cancel
         _ <- IO.sleep(100.millis)
         res <- x.get.commit[IO]
