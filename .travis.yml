@@ -19,4 +19,4 @@ script:
   - sbt ++$TRAVIS_SCALA_VERSION test
 
 after_success:
-- test $PUBLISH == "true" && test $TRAVIS_PULL_REQUEST == "false" && test $TRAVIS_BRANCH == "master" && GPG_WARN_ON_FAILURE=true sbt +publish
+- test $PUBLISH == "true" && test $TRAVIS_PULL_REQUEST == "false" && test $TRAVIS_BRANCH == "master" && GPG_WARN_ON_FAILURE=true sbt +publishSigned
