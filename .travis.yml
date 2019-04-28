@@ -1,0 +1,22 @@
+language: scala
+
+scala:
+  - 2.12.8
+
+jdk:
+  - openjdk8
+
+sudo: required
+dist: xenial
+
+cache:
+  directories:
+    - $HOME/.ivy2
+    - $HOME/.coursier
+    - $HOME/.sbt
+
+script:
+  - sbt ++$TRAVIS_SCALA_VERSION test
+
+after_success:
+- test $PUBLISH == "true" && test $TRAVIS_PULL_REQUEST == "false" && test $TRAVIS_BRANCH == "master" && GPG_WARN_ON_FAILURE=true sbt +publish
