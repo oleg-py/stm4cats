@@ -30,4 +30,11 @@ lazy val stm4cats = crossProject(JSPlatform, JVMPlatform)
     publishMavenStyle := true,
     sonatypeProjectHosting :=
       Some(GitHubHosting("oleg-py", "stm4cats", "oleg.pyzhcov@gmail.com")),
+
+    credentials += Credentials(
+      "Sonatype Nexus Repository Manager",
+      "oss.sonatype.org",
+      sys.env.getOrElse("SONATYPE_USER", ""),
+      sys.env.getOrElse("SONATYPE_PASS", "")
+    ),
   )
