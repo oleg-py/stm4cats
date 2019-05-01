@@ -9,6 +9,15 @@ inThisBuild(Seq(
   pgpPassphrase := sys.env.get("PGP_PASS").map(_.toArray),
 ))
 
+lazy val root = project.in(file("."))
+  .aggregate(stm4cats.js, stm4cats.jvm)
+  .settings(
+    name := "stm4cats",
+    publish := {},
+    publishLocal := {},
+    publishArtifact := false,
+  )
+
 lazy val stm4cats = crossProject(JSPlatform, JVMPlatform)
   .crossType(CrossType.Full)
   .withoutSuffixFor(JVMPlatform)
