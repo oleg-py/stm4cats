@@ -1,34 +1,73 @@
 package com.olegpy.stm.internal
 
 import scala.annotation.tailrec
-import scala.collection.mutable
-import scala.util.DynamicVariable
 
-import java.util.concurrent.atomic.AtomicReference
+import java.{util => ju}
+import java.util.concurrent.atomic.{AtomicLong, AtomicReference}
 
 
 trait StorePlatform {
   def forPlatform(): Store = new Store {
-    private[this] val committed = new AtomicReference(mutable.WeakHashMap[AnyRef, Any]())
-    private[this] val uncommitted = new DynamicVariable(Map.empty[AnyRef, Any])
+    private[this] val committed =
+      new AtomicReference(new ju.WeakHashMap[AnyRef, (Any, Long)]())
+    private[this] val mkId = new AtomicLong()
+    private[this] val journal = new ThreadLocal[Journal]
 
-    private[this] val theLog = new Store.Journal {
-      def read(k: AnyRef): Any = uncommitted.value(k)
+    class Journal extends Store.Journal {
+      val id: Long = mkId.getAndIncrement()
+      val uncommitted = new ju.HashMap[AnyRef, (Any, Long)]()
+      val reads = new ju.HashSet[AnyRef]()
+
+      def read(k: AnyRef): Any = {
+        reads.add(k)
+        if (uncommitted.containsKey(k)) uncommitted.get(k)._1
+        else committed.get().get(k)._1
+      }
+
       def update(k: AnyRef, v: Any): Unit = {
-        uncommitted.value = uncommitted.value.updated(k, v)
+        uncommitted.put(k, (v, id))
+        ()
       }
     }
 
-    final def current(): Store.Journal = theLog
+    final def current(): Journal = journal.get()
+
     final def transact[A](f: => A): A = {
-      @tailrec def loop(): A = {
+      @tailrec def reevaluate(): A = {
         val start = committed.get()
-        val (result, finish) = uncommitted.withValue(Map() ++ start) {
-          (f, mutable.WeakHashMap(uncommitted.value.toSeq: _*))
+        val j = new Journal
+        val result = try {
+          journal.set(j)
+          f
+        } finally {
+          journal.remove()
         }
-        if (committed.compareAndSet(start, finish)) result else loop()
+        @tailrec def tryConsolidate(): Boolean = {
+          val preCommit = committed.get()
+          var hasConflict = start ne preCommit
+          if (hasConflict) {
+            hasConflict = false
+            val ksi = j.reads.iterator()
+            while (ksi.hasNext && !hasConflict) {
+              val key = ksi.next()
+              hasConflict = hasConflict || start.get(key)._2 != preCommit.get(key)._2
+            }
+          }
+          if (hasConflict) {
+            false
+          } else {
+            val end = new ju.WeakHashMap[AnyRef, (Any, Long)](preCommit)
+            end.putAll(j.uncommitted)
+            committed.compareAndSet(preCommit, end) || tryConsolidate()
+          }
+        }
+        if (tryConsolidate()) {
+          result
+        } else {
+          reevaluate()
+        }
       }
-      loop()
+      reevaluate()
     }
   }
 }
