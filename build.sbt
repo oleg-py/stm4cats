@@ -6,6 +6,7 @@ inThisBuild(Seq(
   scalaVersion := "2.12.8",
   version := "0.1.0-SNAPSHOT",
   crossScalaVersions := Seq("2.12.8"),
+  pgpPassphrase := sys.env.get("PGP_PASS").map(_.toArray),
 ))
 
 lazy val stm4cats = crossProject(JSPlatform, JVMPlatform)
