@@ -17,4 +17,5 @@ after_success:
   == "master" && GPG_WARN_ON_FAILURE=true sbt +publishSigned
 before_install:
 - openssl aes-256-cbc -K $encrypted_8d7abf919097_key -iv $encrypted_8d7abf919097_iv
-  -in keyring.asc.enc -out project/keyring.asc -d
+  -in project/.keyring.asc.enc -out project/.keyring.asc -d
+- gpg -a --import project/.keyring.asc
