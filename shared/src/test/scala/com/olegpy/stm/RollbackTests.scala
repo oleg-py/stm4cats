@@ -3,6 +3,7 @@ package com.olegpy.stm
 import cats.effect.IO
 import utest._
 import cats.implicits._
+import com.olegpy.stm.results._
 
 object RollbackTests extends TestSuite with BaseIOSuite {
   val tests = Tests {
@@ -15,17 +16,31 @@ object RollbackTests extends TestSuite with BaseIOSuite {
           case (tref, Left(Dummy)) => tref.get.commit[IO]
           case _ => fail
         }
-        .map { x => assert(x == 0) }
+        .map { _ ==> 0 }
     }
 
     "commit fails on aborts" - {
+      val ex = new Exception("Transaction aborted")
       for {
         s <- TRef.in[IO](0)
-        _ <- STM.atomically[IO] {
-          s.set(5) >> STM.abort(new Exception("Transaction aborted"))
-        }.attempt
+        res <- (s.set(number) >> STM.abort(ex)).result
         r <- s.get.commit[IO]
-      } yield assert(r == 0)
+      } yield {
+        r ==> 0
+        res ==> STMAbort(ex)
+      }
+    }
+
+    "orElse doesn't fall back for aborted computations" - {
+      val ex = new Exception("Transaction aborted")
+      for {
+        s <- TRef.in[IO](0)
+        res <- (s.set(number) >> (STM.abort(ex) orElse STM.unit)).result
+        r <- s.get.commit[IO]
+      } yield {
+        r ==> 0
+        res ==> STMAbort(ex)
+      }
     }
   }
 }

@@ -16,13 +16,13 @@ object RetryTests extends TestSuite with BaseIOSuite {
         inc <- (ref.modify(_ + 1).commit[IO] *> nap).replicateA(5).start
         x   <- ref.get.filter(_ >= 5).commit[IO]
         _   <- inc.cancel
-      } yield assert(x == 5)
+      } yield x ==> 5
     }
 
     "orElse falls back to first successful" - {
       for {
-        x <- STM.retry.orElse(STM.pure(42)).commit[IO]
-      } yield assert(x == 42)
+        x <- STM.retry.orElse(STM.pure(number)).commit[IO]
+      } yield x ==> number
     }
 
     "retries are actually cancellable" - {
@@ -39,7 +39,7 @@ object RetryTests extends TestSuite with BaseIOSuite {
         _ <- f1.cancel
         _ <- longNap
         res <- x.get.commit[IO]
-      } yield assert(res == -1)
+      } yield res ==> -1
     }
   }
 }

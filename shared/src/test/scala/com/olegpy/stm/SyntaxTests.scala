@@ -7,15 +7,13 @@ import cats.implicits._
 object SyntaxTests extends TestSuite with BaseIOSuite {
   val tests = Tests {
     "STM.atomically" - {
-      STM.atomically[IO](STM.pure(number)).map { x =>
-        assert(x == number)
-      }
+      STM.atomically[IO](STM.pure(number))
+        .map { _ ==> number }
     }
 
     "TRef.apply" - {
-      TRef(number).flatMap(_.get).commit[IO].map { x =>
-        assert(x == number)
-      }
+      TRef(number).flatMap(_.get).commit[IO]
+        .map { _ ==> number }
     }
 
     "TRef.in" - {
