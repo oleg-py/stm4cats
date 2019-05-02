@@ -64,6 +64,7 @@ object RetryTests extends TestSuite with BaseIOSuite {
         i2 <- r2.get
         _  = { count += 1 } // side effects to actually track retries
         if i1 < i2
+        _  <- r3.get // after-check gets should not affect anything
       } yield ()
 
       def later(block: => Unit): IO[Unit] = nap >> nap >> IO(block)
