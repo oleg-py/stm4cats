@@ -1,5 +1,7 @@
 package com.olegpy
 
+import scala.language.implicitConversions
+
 import cats.effect.{Concurrent, IO}
 import cats.{FunctorFilter, Monad, MonoidK, ~>}
 import cats.implicits._
@@ -40,19 +42,29 @@ package object stm {
       def withFilter(f: A => Boolean): STM[A] = self.filter(f)
 
       def filterNot(f: A => Boolean): STM[A] = self.flatTap(a => check(!f(a)))
+
+      def unNone[B](implicit ev: A <:< Option[B]): STM[B] =
+        functorFilter.mapFilter(self)(ev)
     }
 
     implicit val monad: Monad[STM] = Monad[IO].asInstanceOf[Monad[STM]]
+    implicit def stmToAllMonadOps[A](stm: STM[A]): Monad.AllOps[STM, A] =
+      Monad.ops.toAllMonadOps(stm)
+
     implicit val functorFilter: FunctorFilter[STM] = new FunctorFilter[STM] {
       def functor: cats.Functor[STM] = monad
       def mapFilter[A, B](fa: STM[A])(f: A => Option[B]): STM[B] =
         fa.flatMap(f(_).fold[STM[B]](STM.retry)(_.pure[STM]))
     }
+    implicit def stmToFunctorFilterOps[A](stm: STM[A]): FunctorFilter.AllOps[STM, A] =
+      FunctorFilter.ops.toAllFunctorFilterOps(stm)
 
     implicit val monoidK: MonoidK[STM] = new MonoidK[STM] {
       def empty[A]: STM[A] = STM.retry
       def combineK[A](a: STM[A], b: STM[A]): STM[A] = a orElse b
     }
+    implicit def stmToMonoidKOps[A](stm: STM[A]): MonoidK.AllOps[STM, A] =
+      MonoidK.ops.toAllMonoidKOps(stm)
 
 
     private[this] def wrap[A](io: IO[A]): STM[A] = io.asInstanceOf[STM[A]]
