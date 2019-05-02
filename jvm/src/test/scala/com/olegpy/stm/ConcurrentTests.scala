@@ -12,7 +12,7 @@ import java.util.concurrent.atomic.AtomicInteger
 
 object ConcurrentTests extends TestSuite with BaseIOSuite {
   val tests = Tests {
-    "concurrent transactions can complete w/o reevaluation" - ioTest {
+    "concurrent transactions can complete w/o reevaluation" - {
       val mkEc = IO {
         ExecutionContext.fromExecutor(Executors.newSingleThreadExecutor())
       }
