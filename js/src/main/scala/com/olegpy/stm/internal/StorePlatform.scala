@@ -40,6 +40,11 @@ trait StorePlatform {
         uncommitted.set(k, v)
         ()
       }
+
+      def clear(): Unit = {
+        uncommitted.clear()
+        ()
+      }
     }
 
     private[this] var theLog: Journal = _

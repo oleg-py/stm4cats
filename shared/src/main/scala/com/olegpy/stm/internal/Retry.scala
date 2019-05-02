@@ -2,5 +2,7 @@ package com.olegpy.stm.internal
 
 import scala.util.control.NoStackTrace
 
+import com.olegpy.stm.STM
 
-private[stm] case object Retry extends Throwable with NoStackTrace
+
+private[stm] case class Retry(next: STM[_]) extends Throwable with NoStackTrace

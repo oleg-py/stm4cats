@@ -35,8 +35,16 @@ object RetryTests extends TestSuite with BaseIOSuite {
 
     "orElse falls back to first successful" - {
       for {
-        x <- STM.retry.orElse(STM.pure(number)).commit[IO]
+        x <- STM.retry.orElse(STM.pure(number).orElse(STM.pure(0))).commit[IO]
       } yield x ==> number
+    }
+
+    "orElse rolls the left back on retry" - {
+      for {
+        ref <- TRef.in[IO](0)
+        _   <- STM.atomically[IO](ref.set(number) >> STM.retry orElse STM.unit)
+        x   <- ref.get.commit[IO]
+      } yield x ==> 0
     }
 
     "retries are actually cancellable" - {

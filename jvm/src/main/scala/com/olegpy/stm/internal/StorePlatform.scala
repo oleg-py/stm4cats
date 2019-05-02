@@ -38,6 +38,8 @@ trait StorePlatform {
         uncommitted.put(k, (v, id))
         ()
       }
+
+      def clear(): Unit = uncommitted.clear()
     }
 
     final def current(): Journal = journal.get()

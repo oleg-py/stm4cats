@@ -17,7 +17,7 @@ package object stm {
 
     def pure[A](a: A): STM[A] = wrap(IO.pure(a))
     val unit: STM[Unit] = wrap(IO.unit)
-    val retry: STM[Nothing] = delay { throw Retry }
+    val retry: STM[Nothing] = delay { throw Retry(wrap(null)) }
     def check(c: Boolean): STM[Unit] = retry.whenA(c)
     def abort[A](ex: Throwable): STM[A] = wrap(IO.raiseError(ex))
 
@@ -36,7 +36,7 @@ package object stm {
       def commit[F[_] : Concurrent]: F[A] = atomicallyImpl[F, A](self)
 
       def orElse[B >: A](other: STM[B]): STM[B] = wrap {
-        expose[B](self) recoverWith { case Retry => expose[B](other) }
+        expose[B](self) adaptError { case Retry(null) => Retry(other) }
       }
 
       def withFilter(f: A => Boolean): STM[A] = self.filter(f)
@@ -81,10 +81,17 @@ package object stm {
         try {
           val result = store.transact {
             journal = store.current()
-            expose[A](stm).unsafeRunSync()
+            def loop(bind: IO[A]): A = try {
+              bind.unsafeRunSync()
+            } catch {
+              case Retry(nb) if nb != null =>
+                journal.clear()
+                loop(expose[A](nb))
+            }
+            loop(expose[A](stm))
           }
           globalLock.notifyOn[F](journal.writtenKeys) as result
-        } catch { case Retry =>
+        } catch { case Retry(_) =>
           val rk = journal.readKeys
           if (rk.isEmpty) throw new PotentialDeadlockException
           globalLock.waitOn[F](rk) >> atomicallyImpl[F, A](stm)
