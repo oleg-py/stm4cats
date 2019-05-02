@@ -20,10 +20,26 @@ class Monitor private[stm] () {
     else getAndUpdate(f)
   }
 
+  private[this] def removeOne[A <: AnyRef](a: A) = (list: List[A]) => {
+    val b = List.newBuilder[A]
+    var it = list
+    while (it ne Nil) {
+      val h = it.head
+      if (h eq a) {
+        b ++= it.tail
+        it = Nil
+      } else {
+        b += h
+        it = it.tail
+      }
+    }
+    b.result()
+  }
+
   def waitF[F[_]](implicit F: Concurrent[F]): F[Unit] = F.cancelable[Unit] { cb =>
       val trigger = () => cb(Right(()))
       getAndUpdate(trigger :: _)
-      F.delay { getAndUpdate(_.filterNot(_ eq trigger)); () }
+      F.delay { getAndUpdate(removeOne(trigger)); () }
   }
 
   def notifyOneF[F[_]](implicit F: Concurrent[F]): F[Unit] = F.suspend {
