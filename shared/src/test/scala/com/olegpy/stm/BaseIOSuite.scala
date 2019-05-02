@@ -29,7 +29,7 @@ trait BaseIOSuite extends TestSuite {
 
   def longNap: IO[Unit] = nap.replicateA(10).void
 
-  def fail: IO[Nothing] = IO.suspend {
+  def fail[A]: IO[A] = IO.suspend {
     assert(false)
     IO.never // unreachable, but above has type Unit
   }

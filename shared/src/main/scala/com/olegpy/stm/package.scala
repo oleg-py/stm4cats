@@ -65,13 +65,17 @@ package object stm {
 
     private[this] def atomicallyImpl[F[_]: Concurrent, A](stm: STM[A]): F[A] =
       Concurrent[F].suspend {
+        var journal: Store.Journal = null
         try {
           val result = store.transact {
+            journal = store.current()
             expose[A](stm).unsafeRunSync()
           }
-          globalLock.notifyOneF[F] as result
-        } catch {
-          case Retry => globalLock.waitF[F] >> atomicallyImpl[F, A](stm)
+          globalLock.notifyOn[F](journal.writtenKeys) as result
+        } catch { case Retry =>
+          val rk = journal.readKeys
+          if (rk.isEmpty) throw new PotentialDeadlockException
+          globalLock.waitOn[F](rk) >> atomicallyImpl[F, A](stm)
         }
       }
   }

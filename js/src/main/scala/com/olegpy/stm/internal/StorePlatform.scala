@@ -1,5 +1,6 @@
 package com.olegpy.stm.internal
 
+import scala.collection.mutable
 import scala.scalajs.js
 
 
@@ -11,12 +12,27 @@ trait StorePlatform {
       js.Dynamic.newInstance(js.Dynamic.global.WeakMap)()
 
     class Journal extends Store.Journal {
+      val readKeys: mutable.Set[AnyRef] = mutable.Set()
+
+      def writtenKeys: collection.Set[AnyRef] = {
+        val mSet = mutable.Set[AnyRef]()
+        val it = uncommitted.keys().asInstanceOf[js.Iterable[AnyRef]].jsIterator()
+        var entry = it.next()
+        while (!entry.done) {
+          mSet += entry.value
+          entry = it.next()
+        }
+        mSet
+      }
+
       val uncommitted : js.Dynamic =
         js.Dynamic.newInstance(js.Dynamic.global.Map)()
 
-      def read(k: AnyRef): Any =
+      def read(k: AnyRef): Any = {
+        readKeys += k
         if (uncommitted.has(k)) uncommitted.get(k)
         else committed.get(k)
+      }
 
       def update(k: AnyRef, v: Any): Unit = {
         uncommitted.set(k, v)

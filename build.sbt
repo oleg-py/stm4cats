@@ -20,7 +20,6 @@ lazy val root = project.in(file("."))
 
 lazy val stm4cats = crossProject(JSPlatform, JVMPlatform)
   .crossType(CrossType.Full)
-  .withoutSuffixFor(JVMPlatform)
   .in(file("."))
   .settings(
     name := "stm4cats",

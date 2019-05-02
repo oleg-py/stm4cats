@@ -1,51 +1,77 @@
 package com.olegpy.stm.internal
 
-import scala.annotation.tailrec
-
 import cats.effect.implicits._
 import cats.effect.Concurrent
 import cats.implicits._
 
-import java.util.concurrent.atomic.AtomicReference
 
 
 class Monitor private[stm] () {
-  type Todos = List[() => Unit]
-  private[this] val pendings = new AtomicReference[Todos](List.empty)
+  type Callback = Either[Throwable, Unit] => Unit
+  private[this] val store: Store = /*_*/Store.forPlatform()/*_*/
+  private[this] val rightUnit = Right(())
 
-  @tailrec private[this] def getAndUpdate(f: Todos => Todos): Todos = {
-    val current = pendings.get()
-    val result = f(current)
-    if (pendings.compareAndSet(current, result)) current
-    else getAndUpdate(f)
-  }
-
-  private[this] def removeOne[A <: AnyRef](a: A) = (list: List[A]) => {
-    val b = List.newBuilder[A]
-    var it = list
-    while (it ne Nil) {
-      val h = it.head
-      if (h eq a) {
-        b ++= it.tail
-        it = Nil
-      } else {
-        b += h
-        it = it.tail
-      }
+  private[this] class RetryCallback (catsCb: Callback) {
+    def invoke(): Unit = {
+      catsCb(rightUnit)
     }
-    b.result()
+
+    def listenTo(key: AnyRef): Unit = {
+      addToSet(key, this)
+      addToSet(this, key)
+    }
+
+    private[this] def addToSet(key: AnyRef, value: Any): Unit = {
+      val j = store.current()
+      j.update(key, j.read(key) match {
+        case set: Set[Any @unchecked] => set + value
+        case _ => Set(value)
+      })
+    }
+
+    private[this] def removeFromSet(key: AnyRef, value: Any): Unit = {
+      val j = store.current()
+      j.update(key, j.read(key) match {
+        case set: Set[Any @unchecked] => set - value
+        case other => other
+      })
+    }
+
+    def removeAllKeys(): Unit = {
+      val j = store.current()
+      j.read(this) match {
+        case set: Set[AnyRef @unchecked] => set.foreach(removeFromSet(_, this))
+        case _ =>
+      }
+      j.update(this, null)
+    }
   }
 
-  def waitF[F[_]](implicit F: Concurrent[F]): F[Unit] = F.cancelable[Unit] { cb =>
-      val trigger = () => cb(Right(()))
-      getAndUpdate(trigger :: _)
-      F.delay { getAndUpdate(removeOne(trigger)); () }
+  def waitOn[F[_]](keys: Iterable[AnyRef])(implicit F: Concurrent[F]): F[Unit] = F.cancelable[Unit] { cb =>
+    val retryCallback = store.transact {
+      val rc = new RetryCallback(cb)
+      keys.foreach(rc.listenTo)
+      rc
+    }
+    F.delay { store.transact(retryCallback.removeAllKeys()) }
   }
 
-  def notifyOneF[F[_]](implicit F: Concurrent[F]): F[Unit] = F.suspend {
-    getAndUpdate(_ drop 1) match {
-      case trigger :: _ => F.delay(trigger()).start.void
-      case _            => F.unit
+  def notifyOn[F[_]](keys: Iterable[AnyRef])(implicit F: Concurrent[F]): F[Unit] = F.suspend {
+    store.transact {
+      val j = store.current()
+      val cbs = Set.newBuilder[RetryCallback]
+      keys.foreach { key =>
+        j.read(key) match {
+          case s: Set[RetryCallback @unchecked] => cbs ++= s
+          case _ =>
+        }
+      }
+      val allJobs = cbs.result()
+      if (allJobs.isEmpty) F.unit
+      else {
+        allJobs.foreach(_.removeAllKeys())
+        F.delay(allJobs.foreach(_.invoke())).start.void
+      }
     }
   }
 }

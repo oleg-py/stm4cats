@@ -3,6 +3,9 @@ package com.olegpy.stm
 import cats.effect.{IO, SyncIO}
 import utest._
 import cats.implicits._
+import com.olegpy.stm.results._
+
+import java.io.{PrintWriter, StringWriter}
 
 object SyntaxTests extends TestSuite with BaseIOSuite {
   val tests = Tests {
@@ -12,8 +15,14 @@ object SyntaxTests extends TestSuite with BaseIOSuite {
     }
 
     "TRef.apply" - {
-      TRef(number).flatMap(_.get).commit[IO]
-        .map { _ ==> number }
+      TRef(number).flatMap(_.get).result
+        .map {
+          case STMAbort(ex) =>
+            val sw = new StringWriter()
+            ex.printStackTrace(new PrintWriter(sw))
+            assert(sw.toString == "")
+          case x => x ==> STMSuccess(number)
+        }
     }
 
     "TRef.in" - {
