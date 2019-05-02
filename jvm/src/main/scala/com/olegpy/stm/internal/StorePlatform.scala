@@ -24,11 +24,13 @@ trait StorePlatform {
       val reads = new ju.HashSet[AnyRef]()
 
       def read(k: AnyRef): Any = {
-        reads.add(k)
         if (uncommitted.containsKey(k)) uncommitted.get(k)._1
-        else committed.get().get(k) match {
-          case null => null
-          case t => t._1
+        else {
+          reads.add(k)
+          committed.get().get(k) match {
+            case null => null
+            case t => t._1
+          }
         }
       }
 

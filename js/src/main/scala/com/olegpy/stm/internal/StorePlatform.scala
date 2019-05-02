@@ -29,9 +29,11 @@ trait StorePlatform {
         js.Dynamic.newInstance(js.Dynamic.global.Map)()
 
       def read(k: AnyRef): Any = {
-        readKeys += k
         if (uncommitted.has(k)) uncommitted.get(k)
-        else committed.get(k)
+        else {
+          readKeys += k
+          committed.get(k)
+        }
       }
 
       def update(k: AnyRef, v: Any): Unit = {

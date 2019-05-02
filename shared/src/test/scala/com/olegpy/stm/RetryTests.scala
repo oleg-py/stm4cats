@@ -12,8 +12,15 @@ object RetryTests extends TestSuite with BaseIOSuite {
       }
     }
 
-    "Unconditional retry after read doesn't terminate" - {
-      val txn = TRef(0).flatMap(_.get) >> STM.retry
+    "Unconditional retry from local reads only throws an exception" - {
+      (TRef(0).flatMap(_.get).filter(_ => false).commit[IO] >> fail[Unit]).recover {
+        case _: PotentialDeadlockException => ()
+      }
+    }
+
+    "Unconditional retry with nonlocal reads doesn't terminate" - {
+      val ref = TRef.in[SyncIO](0).unsafeRunSync()
+      val txn = ref.get >> STM.retry
       IO.race(txn.commit[IO], longNap) map { _ ==> Right(()) }
     }
 
@@ -59,7 +66,7 @@ object RetryTests extends TestSuite with BaseIOSuite {
         if i1 < i2
       } yield ()
 
-      def later(block: => Unit): IO[Unit] = nap >> IO(block)
+      def later(block: => Unit): IO[Unit] = nap >> nap >> IO(block)
 
       for {
         f <- txn.commit[IO].start
