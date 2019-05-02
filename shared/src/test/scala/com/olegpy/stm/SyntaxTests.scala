@@ -32,8 +32,8 @@ object SyntaxTests extends TestSuite with BaseIOSuite {
           _  <- to.modify(_ + amt)
         } yield ()
 
-      IO(transfer(null, null, 0))
-      ()
+      val acc = TRef(number)
+      (acc, acc).mapN(transfer(_, _, 10)).commit[IO]
     }
   }
 }
