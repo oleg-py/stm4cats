@@ -38,6 +38,8 @@ package object stm {
       }
 
       def withFilter(f: A => Boolean): STM[A] = self.filter(f)
+
+      def filterNot(f: A => Boolean): STM[A] = self.flatTap(a => check(!f(a)))
     }
 
     implicit val monad: Monad[STM] = Monad[IO].asInstanceOf[Monad[STM]]

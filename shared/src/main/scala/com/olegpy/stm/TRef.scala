@@ -8,6 +8,9 @@ trait TRef[A] {
   def get: STM[A]
   def set(a: A): STM[Unit]
   def modify(f: A => A): STM[Unit] = get >>= (f >>> set)
+  def modifyF(f: A => STM[A]): STM[Unit] = get >>= f >>= set
+  def modOrRetry(f: PartialFunction[A, A]): STM[Unit] =
+    get.collect(f) >>= set
 }
 
 object TRef {
