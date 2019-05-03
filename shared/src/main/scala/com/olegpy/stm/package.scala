@@ -2,7 +2,7 @@ package com.olegpy
 
 import scala.language.implicitConversions
 
-import cats.effect.{Concurrent, IO}
+import cats.effect.{Concurrent, IO, Sync}
 import cats.{Defer, FunctorFilter, Monad, MonoidK, ~>}
 import cats.implicits._
 import com.olegpy.stm.internal.{Monitor, Retry, Store}
@@ -71,6 +71,9 @@ package object stm {
 
     private[this] def wrap[A](io: IO[A]): STM[A] = io.asInstanceOf[STM[A]]
     private[this] def expose[A](stm: STM[_ >: A]): IO[A] = stm.asInstanceOf[IO[A]]
+
+    private[stm] def unsafeToSync[F[_], A](stm: STM[A])(implicit F: Sync[F]) =
+      F.delay(store.transact { expose[A](stm).unsafeRunSync() })
 
     private[stm] val store: Store = /*_*/Store.forPlatform()/*_*/
     private[stm] def delay[A](a: => A): STM[A] = wrap(IO(a))

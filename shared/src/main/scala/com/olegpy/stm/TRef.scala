@@ -38,7 +38,7 @@ object TRef {
 
   final class InPartiallyApplied[F[_]](private val dummy: Boolean = false) extends AnyVal {
     def apply[A](initial: A)(implicit F: Sync[F]): F[TRef[A]] =
-      F.delay(STM.store.transact { new TRefImpl(initial) })
+      STM.unsafeToSync(TRef(initial))
   }
 
   implicit val invariantMonoidal: InvariantMonoidal[TRef] = new InvariantMonoidal[TRef] {
