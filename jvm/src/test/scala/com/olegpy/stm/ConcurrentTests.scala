@@ -19,7 +19,7 @@ object ConcurrentTests extends TestSuite with BaseIOSuite {
       val attempts = new AtomicInteger()
       def test(ref: TRef[Int], ec: ExecutionContext)(implicit
         cs: ContextShift[IO]) = cs.evalOn(ec) {
-          ref.modify(_ + 1).map { _ =>
+          ref.update(_ + 1).map { _ =>
             Thread.sleep(100)
             attempts.incrementAndGet()
           }.commit[IO]

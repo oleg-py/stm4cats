@@ -37,8 +37,8 @@ object SyntaxTests extends TestSuite with BaseIOSuite {
         for {
           balance <- from.get
           if balance >= amt
-          _  <- from.modify(_ - amt)
-          _  <- to.modify(_ + amt)
+          _  <- from.update(_ - amt)
+          _  <- to.update(_ + amt)
         } yield ()
 
       val acc = TRef(number)

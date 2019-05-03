@@ -27,7 +27,7 @@ object RetryTests extends TestSuite with BaseIOSuite {
     "Retrying eventually completes, if possible" - {
       for {
         ref <- TRef.in[IO](0)
-        inc <- (ref.modify(_ + 1).commit[IO] *> nap).replicateA(5).start
+        inc <- (ref.update(_ + 1).commit[IO] *> nap).replicateA(5).start
         x   <- ref.get.filter(_ >= 5).commit[IO]
         _   <- inc.cancel
       } yield x ==> 5
@@ -50,7 +50,7 @@ object RetryTests extends TestSuite with BaseIOSuite {
     "retries are actually cancellable" - {
       for {
         x <- TRef.in[IO](0)
-        upd <- (x.modify(_ + 1).commit[IO] >> nap).replicateA(10).start
+        upd <- (x.update(_ + 1).commit[IO] >> nap).replicateA(10).start
         f1  <- x.get.filter(_ == 5).commit[IO]
           .guaranteeCase {
             case ExitCase.Canceled => upd.cancel >> x.set(-1).commit[IO]
