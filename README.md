@@ -1,5 +1,5 @@
 # stm4cats
-![Sonatype Nexus (Snapshots)](https://img.shields.io/nexus/s/https/oss.sonatype.org/com.olegpy/stm4cats_2.12.svg)
+![Sonatype Nexus (Snapshots)](https://img.shields.io/nexus/s/https/oss.sonatype.org/com.olegpy/stm4cats_2.12.svg) ![Travis (.org)](https://img.shields.io/travis/oleg-py/stm4cats.svg)
 
 An implementation of STM for any cats-effect compatible effect type.
 
