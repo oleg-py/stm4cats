@@ -1,7 +1,5 @@
 package com.olegpy.stm.internal
 
-import scala.collection.immutable.Queue
-
 import cats.effect.implicits._
 import cats.effect.Concurrent
 import cats.implicits._
@@ -26,15 +24,15 @@ class Monitor private[stm] () {
     private[this] def addToSet(key: AnyRef, value: Any): Unit = {
       val j = store.current()
       j.update(key, j.read(key) match {
-        case set: Queue[Any @unchecked] => set.enqueue(value)
-        case _ => Queue(value)
+        case set: Set[Any @unchecked] => set + value
+        case _ => Set(value)
       })
     }
 
     private[this] def removeFromSet(key: AnyRef, value: Any): Unit = {
       val j = store.current()
       j.update(key, j.read(key) match {
-        case set: Queue[Any @unchecked] => set.filter(_ != value)
+        case set: Set[Any @unchecked] => set - value
         case other => other
       })
     }
@@ -42,7 +40,7 @@ class Monitor private[stm] () {
     def removeAllKeys(): Unit = {
       val j = store.current()
       j.read(this) match {
-        case set: Queue[AnyRef @unchecked] => set.foreach(removeFromSet(_, this))
+        case set: Set[AnyRef @unchecked] => set.foreach(removeFromSet(_, this))
         case _ =>
       }
       j.update(this, null)
@@ -61,10 +59,10 @@ class Monitor private[stm] () {
   def notifyOn[F[_]](keys: Iterable[AnyRef])(implicit F: Concurrent[F]): F[Unit] = F.suspend {
     store.transact {
       val j = store.current()
-      val cbs = List.newBuilder[RetryCallback]
+      val cbs = Set.newBuilder[RetryCallback]
       keys.foreach { key =>
         j.read(key) match {
-          case q: Queue[RetryCallback @unchecked] => cbs ++= q
+          case s: Set[RetryCallback @unchecked] => cbs ++= s
           case _ =>
         }
       }
