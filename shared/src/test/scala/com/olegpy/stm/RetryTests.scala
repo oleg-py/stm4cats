@@ -1,5 +1,6 @@
 package com.olegpy.stm
 
+import cats.effect.concurrent.Ref
 import cats.effect.{ExitCase, IO, SyncIO}
 import utest._
 import cats.implicits._
@@ -64,6 +65,23 @@ object RetryTests extends TestSuite with BaseIOSuite {
       } yield res ==> -1
     }
 
+    "retries are done in FIFO order" - {
+      object Sem {
+        private[this] val state = TRef.in[IO](1).unsafeRunSync()
+        def withPermit[A](a: IO[A]): IO[A] =
+          state.updOrRetry { case n if n > 0 => n - 1 }.commit[IO]
+          .bracket(_ => a)(_ => state.update(_ + 1).commit[IO])
+      }
+
+      val workers = List.range(0, 10)
+      for {
+        results <- Ref[IO].of(List.empty[Int])
+        fibers  <- workers.traverse(i => Sem.withPermit(results.update(i :: _) <* nap).start <* nap)
+        _       <- fibers.parTraverse(_.join)
+        out     <- results.get
+      } yield out.reverse ==> workers
+    }
+
     "retries are not triggered by writes to independent variables" - {
       @volatile var count = 0
       val r1, r2, r3 = TRef.in[SyncIO](0).unsafeRunSync()
@@ -85,8 +103,8 @@ object RetryTests extends TestSuite with BaseIOSuite {
         _ <- r3.set(number).commit[IO]
         _ <- later { count ==> 2 } // Didn't try again, as we didn't touch r1 or r2
         _ <- r2.set(number + 1).commit[IO]
-        _ <- later { count ==> 3 } // Tried again, and should complete at this point
         _ <- f.join
+        _ <- later { count ==> 3 } // Tried again, and should complete at this point
       } yield ()
     }
   }
