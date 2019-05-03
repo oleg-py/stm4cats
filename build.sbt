@@ -5,7 +5,7 @@ inThisBuild(Seq(
   organization := "com.olegpy",
   scalaVersion := "2.12.8",
   version := "0.1.0-SNAPSHOT",
-  crossScalaVersions := Seq("2.12.8"),
+  crossScalaVersions := Seq("2.11.12", "2.12.8"),
   pgpPassphrase := sys.env.get("PGP_PASS").map(_.toArray),
 ))
 
@@ -16,6 +16,7 @@ lazy val root = project.in(file("."))
     publish := {},
     publishLocal := {},
     publishArtifact := false,
+    publishTo := sonatypePublishTo.value,
   )
 
 lazy val stm4cats = crossProject(JSPlatform, JVMPlatform)
@@ -39,11 +40,4 @@ lazy val stm4cats = crossProject(JSPlatform, JVMPlatform)
     publishMavenStyle := true,
     sonatypeProjectHosting :=
       Some(GitHubHosting("oleg-py", "stm4cats", "oleg.pyzhcov@gmail.com")),
-
-    credentials += Credentials(
-      "Sonatype Nexus Repository Manager",
-      "oss.sonatype.org",
-      sys.env.getOrElse("SONATYPE_USER", ""),
-      sys.env.getOrElse("SONATYPE_PASS", "")
-    ),
   )

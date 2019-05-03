@@ -14,7 +14,7 @@ script:
 - sbt ++$TRAVIS_SCALA_VERSION test
 after_success:
 - test $PUBLISH == "true" && test $TRAVIS_PULL_REQUEST == "false" && test $TRAVIS_BRANCH
-  == "master" && script -c 'gpg -a --import project/.keyring.asc' > /dev/null && GPG_WARN_ON_FAILURE=true sbt +publishSigned
+  == "master" && script -c 'gpg -a --import project/.keyring.asc' > /dev/null && sbt +publishSigned
 before_install:
 - openssl aes-256-cbc -K $encrypted_8d7abf919097_key -iv $encrypted_8d7abf919097_iv
   -in project/.keyring.asc.enc -out project/.keyring.asc -d
