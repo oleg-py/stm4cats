@@ -83,14 +83,20 @@ package object stm {
         try {
           val result = store.transact {
             journal = store.current()
-            def loop(bind: IO[A]): A = try {
-              bind.unsafeRunSync()
-            } catch {
-              case Retry(nb) if nb != null =>
-                journal.clear()
-                loop(expose[A](nb))
+            var out: A = null.asInstanceOf[A]
+            var nextBind: IO[A] = expose[A](stm)
+            while (nextBind != null) {
+              try {
+                out = nextBind.unsafeRunSync()
+                nextBind = null
+              }
+              catch {
+                case Retry(nb) if nb != null =>
+                  journal.clear()
+                  nextBind = expose[A](nb)
+              }
             }
-            loop(expose[A](stm))
+            out
           }
           globalLock.notifyOn[F](journal.writtenKeys) as result
         } catch { case Retry(_) =>
