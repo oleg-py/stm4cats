@@ -27,6 +27,8 @@ lazy val stm4cats = crossProject(JSPlatform, JVMPlatform)
     libraryDependencies ++= Seq(
       "org.typelevel" %%% "cats-effect" % "1.2.0",
       "com.lihaoyi" %%% "utest" % "0.6.7" % Test,
+      "org.typelevel" %%% "cats-laws" % "1.5.0" % Test,
+      "org.typelevel" %%% "cats-effect-laws" % "1.2.0" % Test,
     ),
 
     testFrameworks += new TestFramework("utest.runner.Framework"),
