@@ -3,7 +3,7 @@ package com.olegpy
 import scala.language.implicitConversions
 
 import cats.effect.{Concurrent, IO}
-import cats.{FunctorFilter, Monad, MonoidK, ~>}
+import cats.{Defer, FunctorFilter, Monad, MonoidK, ~>}
 import cats.implicits._
 import com.olegpy.stm.internal.{Monitor, Retry, Store}
 
@@ -47,7 +47,9 @@ package object stm {
         functorFilter.mapFilter(self)(ev)
     }
 
-    implicit val monad: Monad[STM] = Monad[IO].asInstanceOf[Monad[STM]]
+    implicit val monad: Monad[STM] with Defer[STM] =
+      IO.ioEffect.asInstanceOf[Monad[STM] with Defer[STM]]
+
     implicit def stmToAllMonadOps[A](stm: STM[A]): Monad.AllOps[STM, A] =
       Monad.ops.toAllMonadOps(stm)
 
