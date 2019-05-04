@@ -3,7 +3,7 @@ package com.olegpy.stm.concurrent
 import scala.collection.immutable.Queue
 
 import cats.Foldable
-import cats.data.{Chain, NonEmptyChain}
+import cats.data.NonEmptyList
 import cats.effect.Sync
 import com.olegpy.stm.{STM, TRef}
 import cats.syntax.all._
@@ -16,12 +16,8 @@ trait TQueue[A] {
   def enqueueAll[F[_]: Foldable](fa: F[A]): STM[Unit] = fa.traverse_(enqueue)
 
   def dequeue: STM[A] = tryDequeue.unNone
-  def dequeueUpTo(n: Int): STM[NonEmptyChain[A]] = {
-    def loop(as: Chain[A]): STM[Chain[A]] = tryDequeue.flatMap {
-      case Some(a) => loop(as :+ a)
-      case None => STM.pure(as)
-    }
-    loop(Chain.empty).mapFilter(NonEmptyChain.fromChain)
+  def dequeueUpTo(n: Int): STM[NonEmptyList[A]] = {
+    dequeue.iterateUntilRetry.mapFilter(NonEmptyList.fromList)
   }
 
 }

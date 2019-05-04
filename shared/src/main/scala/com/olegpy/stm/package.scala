@@ -16,6 +16,8 @@ package object stm {
     type Of[+A] <: Base with Tag
 
     def pure[A](a: A): STM[A] = wrap(IO.pure(a))
+    def suspend[A](stm: => STM[A]): STM[A] = wrap(IO.suspend(expose[A](stm)))
+
     val unit: STM[Unit] = wrap(IO.unit)
     val retry: STM[Nothing] = delay { throw Retry(wrap(null)) }
     def check(c: Boolean): STM[Unit] = retry.whenA(c)
@@ -45,6 +47,13 @@ package object stm {
 
       def unNone[B](implicit ev: A <:< Option[B]): STM[B] =
         functorFilter.mapFilter(self)(ev)
+
+      def iterateUntilRetry: STM[List[A]] = STM.suspend {
+        val b = List.newBuilder[A]
+        def loop: STM[List[A]] =
+          (self.map(b += _) >> loop).orElse(STM.pure(b.result()))
+        loop
+      }
     }
 
     implicit val monad: Monad[STM] with Defer[STM] =

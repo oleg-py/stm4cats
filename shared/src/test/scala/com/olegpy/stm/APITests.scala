@@ -7,7 +7,7 @@ import com.olegpy.stm.results._
 
 import java.io.{PrintWriter, StringWriter}
 
-object SyntaxTests extends TestSuite with BaseIOSuite {
+object APITests extends TestSuite with BaseIOSuite {
   val tests = Tests {
     "STM.atomically" - {
       STM.atomically[IO](STM.pure(number))
@@ -64,6 +64,13 @@ object SyntaxTests extends TestSuite with BaseIOSuite {
     "STM.atomicallyK" - {
       val fk = STM.atomicallyK[IO]
       fk(STM.pure(number)).map(_ ==> number)
+    }
+
+    "STM#iterateUntilRetry" - {
+      for {
+        r <- TRef.in[IO](4)
+        x <- r.modify(x => (x - 1, x)).filter(_ > 0).iterateUntilRetry.commit[IO]
+      } yield x ==> List(4, 3, 2, 1)
     }
   }
 }
