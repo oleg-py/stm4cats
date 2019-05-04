@@ -5,8 +5,6 @@ import utest._
 import cats.syntax.apply._
 import com.olegpy.stm.results._
 
-import java.io.{PrintWriter, StringWriter}
-
 object APITests extends TestSuite with BaseIOSuite {
   val tests = Tests {
     "STM.atomically" - {
@@ -16,13 +14,7 @@ object APITests extends TestSuite with BaseIOSuite {
 
     "TRef.apply" - {
       TRef(number).flatMap(_.get).result
-        .map {
-          case STMAbort(ex) =>
-            val sw = new StringWriter()
-            ex.printStackTrace(new PrintWriter(sw))
-            assert(sw.toString == "")
-          case x => x ==> STMSuccess(number)
-        }
+        .map { _ ==> STMSuccess(number) }
     }
 
     "TRef.in" - {

@@ -2,6 +2,7 @@ package com.olegpy.stm.internal
 
 import scala.collection.mutable
 import scala.scalajs.js
+import scala.util.control.NonFatal
 
 
 trait StorePlatform {
@@ -11,8 +12,10 @@ trait StorePlatform {
     private[this] val committed =
       js.Dynamic.newInstance(js.Dynamic.global.WeakMap)()
 
-    class Journal extends Store.Journal {
+    class Journal(
+      val uncommitted : js.Dynamic = js.Dynamic.newInstance(js.Dynamic.global.Map)(),
       val readKeys: mutable.Set[AnyRef] = mutable.Set()
+    ) extends Store.Journal {
 
       def writtenKeys: collection.Set[AnyRef] = {
         val mSet = mutable.Set[AnyRef]()
@@ -25,8 +28,6 @@ trait StorePlatform {
         mSet
       }
 
-      val uncommitted : js.Dynamic =
-        js.Dynamic.newInstance(js.Dynamic.global.Map)()
 
       def read(k: AnyRef): Any = {
         if (uncommitted.has(k)) uncommitted.get(k)
@@ -45,6 +46,11 @@ trait StorePlatform {
         uncommitted.clear()
         ()
       }
+
+      def copy(): Journal = new Journal(
+        js.Dynamic.newInstance(js.Dynamic.global.Map)(uncommitted),
+        readKeys
+      )
     }
 
     private[this] var theLog: Journal = _
@@ -61,6 +67,17 @@ trait StorePlatform {
       }
       theLog = null
       result
+    }
+
+    def attempt[A](f: => A): A = {
+      val j = theLog
+      try {
+        theLog = j.copy()
+        f
+      } catch { case NonFatal(ex) =>
+        theLog = j
+        throw ex
+      }
     }
   }
 }

@@ -19,7 +19,7 @@ package object stm {
     def suspend[A](stm: => STM[A]): STM[A] = wrap(IO.suspend(expose[A](stm)))
 
     val unit: STM[Unit] = wrap(IO.unit)
-    val retry: STM[Nothing] = delay { throw Retry(wrap(null)) }
+    val retry: STM[Nothing] = delay { throw Retry }
     def check(c: Boolean): STM[Unit] = retry.whenA(c)
     def abort[A](ex: Throwable): STM[A] = wrap(IO.raiseError(ex))
 
@@ -37,8 +37,12 @@ package object stm {
     implicit class STMOps[A](private val self: STM[A]) extends AnyVal {
       def commit[F[_] : Concurrent]: F[A] = atomicallyImpl[F, A](self)
 
-      def orElse[B >: A](other: STM[B]): STM[B] = wrap {
-        expose[B](self) adaptError { case Retry(null) => Retry(other) }
+      def orElse[B >: A](other: STM[B]): STM[B] = suspend {
+        try {
+          STM.pure { store.attempt { expose[B](self).unsafeRunSync() } }
+        } catch { case Retry =>
+          other
+        }
       }
 
       def withFilter(f: A => Boolean): STM[A] = self.filter(f)
@@ -95,23 +99,10 @@ package object stm {
         try {
           val result = store.transact {
             journal = store.current()
-            var out: A = null.asInstanceOf[A]
-            var nextBind: IO[A] = expose[A](stm)
-            while (nextBind != null) {
-              try {
-                out = nextBind.unsafeRunSync()
-                nextBind = null
-              }
-              catch {
-                case Retry(nb) if nb != null =>
-                  journal.clear()
-                  nextBind = expose[A](nb)
-              }
-            }
-            out
+            expose[A](stm).unsafeRunSync()
           }
           globalLock.notifyOn[F](journal.writtenKeys) as result
-        } catch { case Retry(_) =>
+        } catch { case Retry =>
           val rk = journal.readKeys
           if (rk.isEmpty) throw new PotentialDeadlockException
           globalLock.waitOn[F](rk) >> atomicallyImpl[F, A](stm)
