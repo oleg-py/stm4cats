@@ -13,7 +13,7 @@ trait BaseIOSuite extends TestSuite {
 
   val number = 42
 
-  def ioTimeout: FiniteDuration = 500.millis
+  def ioTimeout: FiniteDuration = 750.millis
 
   override def utestWrap(path: Seq[String], runBody: => Future[Any])(implicit ec: ExecutionContext): Future[Any] = {
     super.utestWrap(path, runBody.flatMap {
