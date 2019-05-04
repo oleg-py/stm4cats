@@ -1,5 +1,7 @@
 # stm4cats
-![Sonatype Nexus (Snapshots)](https://img.shields.io/nexus/s/https/oss.sonatype.org/com.olegpy/stm4cats_2.12.svg) ![Travis (.org)](https://img.shields.io/travis/oleg-py/stm4cats.svg)
+![Sonatype Nexus (Snapshots)](https://img.shields.io/nexus/s/https/oss.sonatype.org/com.olegpy/stm4cats_2.12.svg)
+[![Build Status](https://travis-ci.org/oleg-py/stm4cats.svg?branch=master)](https://travis-ci.org/oleg-py/stm4cats)
+[![Coverage Status](https://coveralls.io/repos/github/oleg-py/stm4cats/badge.svg?branch=master)](https://coveralls.io/github/oleg-py/stm4cats?branch=master)
 
 An implementation of STM for any cats-effect compatible effect type.
 
