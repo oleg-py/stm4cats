@@ -1,11 +1,12 @@
 package com.olegpy.stm.concurrent
 
+import cats.{Functor, Invariant}
 import cats.effect.{Concurrent, Sync}
 import cats.effect.concurrent.TryableDeferred
 import com.olegpy.stm.{STM, TRef}
+import cats.implicits._
 
-
-class TDeferred[A] (state: TRef[Option[A]]) extends TryableDeferred[STM, A] { outer =>
+class TDeferred[A] (private val state: TRef[Option[A]]) extends TryableDeferred[STM, A] { outer =>
   def tryGet: STM[Option[A]] = state.get
   def get: STM[A] = tryGet.unNone
   def complete(a: A): STM[Unit] = state.updateF {
@@ -13,6 +14,7 @@ class TDeferred[A] (state: TRef[Option[A]]) extends TryableDeferred[STM, A] { ou
     case None => STM.pure(Some(a))
   }
 
+  // N.B: cannot use this.mapK as that doesn't return TryableDeferred
   def in[F[_]: Concurrent]: TryableDeferred[F, A] = new TryableDeferred[F, A] {
     def tryGet: F[Option[A]] = outer.tryGet.commit[F]
     def get: F[A] = outer.get.commit[F]
@@ -23,4 +25,11 @@ class TDeferred[A] (state: TRef[Option[A]]) extends TryableDeferred[STM, A] { ou
 object TDeferred {
   def apply[A]: STM[TDeferred[A]] = TRef(Option.empty[A]).map(new TDeferred(_))
   def in[F[_]: Sync, A]: F[TDeferred[A]] = STM.unsafeToSync(apply)
+
+  implicit val invariant: Invariant[TDeferred] = new Invariant[TDeferred] {
+    def imap[A, B](fa: TDeferred[A])(f: A => B)(g: B => A): TDeferred[B] = {
+      val fo = Functor[Option]
+      new TDeferred[B](fa.state.imap(fo.lift(f))(fo.lift(g)))
+    }
+  }
 }

@@ -2,11 +2,12 @@ package com.olegpy.stm.concurrent
 
 import scala.collection.immutable.Queue
 
-import cats.Foldable
-import cats.data.NonEmptyList
+import cats.{Foldable, Invariant}
+import cats.data.{Nested, NonEmptyList}
 import cats.effect.Sync
 import com.olegpy.stm.{STM, TRef}
 import cats.syntax.all._
+import cats.instances.option._
 
 trait TQueue[A] {
   def offer(a: A): STM[Boolean]
@@ -19,7 +20,6 @@ trait TQueue[A] {
   def dequeueUpTo(n: Int): STM[NonEmptyList[A]] = {
     dequeue.iterateUntilRetry.mapFilter(NonEmptyList.fromList)
   }
-
 }
 
 object TQueue {
@@ -76,4 +76,11 @@ object TQueue {
 
   def circularBufferIn[F[_]: Sync, A](max: Int): F[TQueue[A]] =
     STM.unsafeToSync(circularBuffer(max))
+
+  implicit val invariant: Invariant[TQueue] = new Invariant[TQueue] {
+    def imap[A, B](fa: TQueue[A])(f: A => B)(g: B => A): TQueue[B] = new TQueue[B] {
+      def offer(a: B): STM[Boolean] = fa.offer(g(a))
+      def tryDequeue: STM[Option[B]] = Nested(fa.tryDequeue).map(f).value
+    }
+  }
 }
