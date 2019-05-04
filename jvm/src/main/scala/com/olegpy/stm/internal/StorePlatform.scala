@@ -89,5 +89,16 @@ trait StorePlatform {
         journal.remove()
       }
     }
+
+    def attempt[A](f: => A): A = {
+      val j = current()
+      try {
+        journal.set(j.copy())
+        f
+      } catch { case NonFatal(ex) =>
+        journal.set(j)
+        throw ex
+      }
+    }
   }
 }
