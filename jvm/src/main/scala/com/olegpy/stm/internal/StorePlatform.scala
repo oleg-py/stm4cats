@@ -66,7 +66,10 @@ trait StorePlatform {
             }
           }
           if (hasConflict) {
+            // This might not be hit in a single test run, avoid fluctuating coverage
+            // $COVERAGE-OFF$
             false
+            // $COVERAGE-ON$
           } else {
             val end = new ju.WeakHashMap[AnyRef, (Any, Long)](preCommit)
             end.putAll(j.uncommitted)
@@ -76,7 +79,10 @@ trait StorePlatform {
         if (tryConsolidate()) {
           result
         } else {
+          // Same as above
+          // $COVERAGE-OFF$
           reevaluate()
+          // $COVERAGE-ON$
         }
       }
       reevaluate()

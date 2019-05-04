@@ -39,10 +39,7 @@ class Monitor private[stm] () {
 
     def removeAllKeys(): Unit = {
       val j = store.current()
-      j.read(this) match {
-        case set: Set[AnyRef @unchecked] => set.foreach(removeFromSet(_, this))
-        case _ =>
-      }
+      j.read(this).asInstanceOf[Set[AnyRef @unchecked]].foreach(removeFromSet(_, this))
       j.update(this, null)
     }
   }

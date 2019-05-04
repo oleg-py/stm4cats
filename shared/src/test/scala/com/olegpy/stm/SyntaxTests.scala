@@ -2,7 +2,7 @@ package com.olegpy.stm
 
 import cats.effect.{IO, SyncIO}
 import utest._
-import cats.implicits._
+import cats.syntax.apply._
 import com.olegpy.stm.results._
 
 import java.io.{PrintWriter, StringWriter}
@@ -43,6 +43,27 @@ object SyntaxTests extends TestSuite with BaseIOSuite {
 
       val acc = TRef(number)
       (acc, acc).mapN(transfer(_, _, 10)).commit[IO]
+    }
+
+    "SemigroupK syntax" - {
+      val ref = TRef.in[IO](10).unsafeRunSync()
+      (ref.get <+> STM.retry).commit[IO]
+    }
+
+    "STM#unNone" - {
+      for {
+        ref <- TRef.in[IO](Option(number))
+        x   <- ref.get.unNone.commit[IO]
+      } yield assert(x == number)
+    }
+
+    "STM#filterNot" - {
+      STM.pure(number).filterNot(_ != number).commit[IO].map { _ ==> number }
+    }
+
+    "STM.atomicallyK" - {
+      val fk = STM.atomicallyK[IO]
+      fk(STM.pure(number)).map(_ ==> number)
     }
   }
 }

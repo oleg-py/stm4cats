@@ -41,7 +41,7 @@ package object stm {
 
       def withFilter(f: A => Boolean): STM[A] = self.filter(f)
 
-      def filterNot(f: A => Boolean): STM[A] = self.flatTap(a => check(!f(a)))
+      def filterNot(f: A => Boolean): STM[A] = self.flatTap(a => check(f(a)))
 
       def unNone[B](implicit ev: A <:< Option[B]): STM[B] =
         functorFilter.mapFilter(self)(ev)
