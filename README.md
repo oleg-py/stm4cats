@@ -60,3 +60,10 @@ val io = for {
 
 io.unsafeRunSync() // Well, not on JS
 ```
+### Acknowledgements 
+My interest in STM, as well as some of API in stm4cats was influenced by:
+- [Talk](https://www.youtube.com/watch?v=d6WWmia0BPM) by @jdegoes and @wi101 on STM in ZIO
+- An [alternative implementation](https://github.com/TimWSpence/cats-stm) by @TimWSpence
+- And last, but not least,
+[Beautiful concurrency paper](https://www.microsoft.com/en-us/research/wp-content/uploads/2016/02/beautiful.pdf)
+by Simon Peyton Jones
