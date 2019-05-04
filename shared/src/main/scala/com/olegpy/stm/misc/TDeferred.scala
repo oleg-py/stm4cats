@@ -1,4 +1,4 @@
-package com.olegpy.stm.concurrent
+package com.olegpy.stm.misc
 
 import cats.{Functor, Invariant}
 import cats.effect.{Concurrent, Sync}
@@ -6,7 +6,7 @@ import cats.effect.concurrent.TryableDeferred
 import com.olegpy.stm.{STM, TRef}
 import cats.implicits._
 
-class TDeferred[A] (private val state: TRef[Option[A]]) extends TryableDeferred[STM, A] { outer =>
+class TDeferred[A] (private[stm] val state: TRef[Option[A]]) extends TryableDeferred[STM, A] { outer =>
   def tryGet: STM[Option[A]] = state.get
   def get: STM[A] = tryGet.unNone
   def complete(a: A): STM[Unit] = state.updateF {

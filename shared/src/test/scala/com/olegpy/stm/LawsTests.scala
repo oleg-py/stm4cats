@@ -13,19 +13,27 @@ import utest._
 import cats.implicits._
 import cats.kernel.Eq
 import utest.framework.TestPath
+import com.olegpy.stm.misc.TDeferred
 
 object LawsTests extends TestSuite with BaseIOSuite {
   val tests = Tests {
     "Monad[STM]" -
       uCheckAll(MonadTests[STM].monad[Int, String, Long])
+
     "Defer[STM]" -
       uCheckAll(DeferTests[STM].defer[Long])
+
     "MonoidK[STM]" -
       uCheckAll(MonoidKTests[STM].monoidK[Int])
+
     "FunctorFilter[STM]" -
       uCheckAll(FunctorFilterTests[STM].functorFilter[Int, String, Long])
+
     "InvariantMonoidal[TRef]" -
       uCheckAll(InvariantMonoidalTests[TRef].invariantMonoidal[Int, Int, Int])
+
+    "Invariant[TDeferred]" -
+      uCheckAll(InvariantTests[TDeferred].invariant[Int, String, Long])
   }
 
   implicit val tc: TestContext = TestContext()
@@ -34,6 +42,9 @@ object LawsTests extends TestSuite with BaseIOSuite {
 
   implicit def arbRef[A](implicit a: Arbitrary[A]): Arbitrary[TRef[A]] =
     Arbitrary(a.arbitrary.map(TRef.in[IO](_).unsafeRunSync()))
+
+  implicit def arbDef[A](implicit a: Arbitrary[Option[A]]): Arbitrary[TDeferred[A]] =
+    Arbitrary(arbRef[Option[A]].arbitrary.map(new TDeferred(_)))
 
   implicit def eq[A: Eq]: Eq[STM[A]] = Eq[IO[A]].contramap(STM.atomically[IO](_))
 
@@ -44,6 +55,8 @@ object LawsTests extends TestSuite with BaseIOSuite {
       (check, l.set(next), check).mapN((a, _, b) => a && b)
     }.unsafeRunSync()
   }
+
+  implicit def eqTdef[A: Eq: Arbitrary]: Eq[TDeferred[A]] = Eq.by(_.state)
 
   class UTestReporter(prop: String) extends ConsoleReporter(0) {
     override def onTestResult(name: String, res: org.scalacheck.Test.Result): Unit = {

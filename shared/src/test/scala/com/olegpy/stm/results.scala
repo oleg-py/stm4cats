@@ -1,10 +1,15 @@
 package com.olegpy.stm
 
+import scala.reflect.ClassTag
+
 import cats.effect.{Concurrent, IO}
 import cats.implicits._
 
 object results {
-  sealed trait STMResult[+A]
+  sealed trait STMResult[+A] {
+    def is[T](implicit ct: ClassTag[T]): Boolean =
+      ct.runtimeClass.isInstance(this)
+  }
 
   case class STMSuccess[+A](value: A) extends STMResult[A]
   case class STMAbort(reason: Throwable) extends STMResult[Nothing]

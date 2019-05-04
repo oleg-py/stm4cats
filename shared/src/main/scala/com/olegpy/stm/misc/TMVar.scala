@@ -1,4 +1,4 @@
-package com.olegpy.stm.concurrent
+package com.olegpy.stm.misc
 
 import cats.{Functor, Invariant}
 import cats.effect.{Concurrent, Sync}

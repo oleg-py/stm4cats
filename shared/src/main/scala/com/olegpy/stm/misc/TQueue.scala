@@ -1,4 +1,4 @@
-package com.olegpy.stm.concurrent
+package com.olegpy.stm.misc
 
 import scala.collection.immutable.Queue
 

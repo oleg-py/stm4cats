@@ -33,4 +33,6 @@ trait BaseIOSuite extends TestSuite {
     assert(false)
     IO.never // unreachable, but above has type Unit
   }
+
+  def disabled(a: => Any): Unit = ()
 }
