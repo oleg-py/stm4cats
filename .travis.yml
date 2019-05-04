@@ -12,8 +12,9 @@ cache:
   - "$HOME/.coursier"
   - "$HOME/.sbt"
 script:
-- sbt ++$TRAVIS_SCALA_VERSION test
+- sbt ++$TRAVIS_SCALA_VERSION coverage test
 after_success:
+- sbt coverageReport coveralls
 - test $PUBLISH == "true" && test $TRAVIS_PULL_REQUEST == "false" && test $TRAVIS_BRANCH
   == "master" && script -c 'gpg -a --import project/.keyring.asc' > /dev/null && sbt +publishSigned
 before_install:
