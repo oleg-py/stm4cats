@@ -42,11 +42,6 @@ trait StorePlatform {
         ()
       }
 
-      def clear(): Unit = {
-        uncommitted.clear()
-        ()
-      }
-
       def copy(): Journal = new Journal(
         js.Dynamic.newInstance(js.Dynamic.global.Map)(uncommitted),
         readKeys
