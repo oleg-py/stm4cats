@@ -1,7 +1,6 @@
 package com.olegpy.stm.misc
 
 import cats.effect.IO
-import cats.effect.concurrent.Deferred
 import cats.implicits._
 import com.olegpy.stm.BaseIOSuite
 import com.olegpy.stm.results._

@@ -1,27 +1,14 @@
 package com.olegpy.stm
 
-import cats.effect.{IO, SyncIO}
+import cats.effect.IO
 import utest._
 import cats.syntax.apply._
-import com.olegpy.stm.results._
 
 object APITests extends TestSuite with BaseIOSuite {
   val tests = Tests {
     "STM.atomically" - {
       STM.atomically[IO](STM.pure(number))
         .map { _ ==> number }
-    }
-
-    "TRef.apply" - {
-      TRef(number).flatMap(_.get).result
-        .map { _ ==> STMSuccess(number) }
-    }
-
-    "TRef.in" - {
-      for {
-        tr <- TRef.in[SyncIO](number).toIO
-        x  <- tr.get.commit[IO]
-      } yield assert(x == number)
     }
 
     "for-comprehension with guards" - {
