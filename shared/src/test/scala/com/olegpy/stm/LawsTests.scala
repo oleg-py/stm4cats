@@ -13,7 +13,7 @@ import utest._
 import cats.implicits._
 import cats.kernel.Eq
 import utest.framework.TestPath
-import com.olegpy.stm.misc.TDeferred
+import com.olegpy.stm.misc.{TDeferred, TMVar}
 
 object LawsTests extends TestSuite with BaseIOSuite {
   val tests = Tests {
@@ -34,6 +34,9 @@ object LawsTests extends TestSuite with BaseIOSuite {
 
     "Invariant[TDeferred]" -
       uCheckAll(InvariantTests[TDeferred].invariant[Int, String, Long])
+
+    "Invariant[TMVar]" -
+      uCheckAll(InvariantTests[TMVar].invariant[Int, String, Long])
   }
 
   implicit val tc: TestContext = TestContext()
@@ -42,6 +45,9 @@ object LawsTests extends TestSuite with BaseIOSuite {
 
   implicit def arbRef[A](implicit a: Arbitrary[A]): Arbitrary[TRef[A]] =
     Arbitrary(a.arbitrary.map(TRef.in[IO](_).unsafeRunSync()))
+
+  implicit def arbTMVar[A](implicit a: Arbitrary[Option[A]]): Arbitrary[TMVar[A]] =
+    Arbitrary(arbRef[Option[A]].arbitrary.map(new TMVar(_)))
 
   implicit def arbDef[A](implicit a: Arbitrary[Option[A]]): Arbitrary[TDeferred[A]] =
     Arbitrary(arbRef[Option[A]].arbitrary.map(new TDeferred(_)))
@@ -56,7 +62,8 @@ object LawsTests extends TestSuite with BaseIOSuite {
     }.unsafeRunSync()
   }
 
-  implicit def eqTdef[A: Eq: Arbitrary]: Eq[TDeferred[A]] = Eq.by(_.state)
+  implicit def eqTDeferred[A: Eq: Arbitrary]: Eq[TDeferred[A]] = Eq.by(_.state)
+  implicit def eqTMVar[A: Eq: Arbitrary]: Eq[TMVar[A]] = Eq.by(_.state)
 
   class UTestReporter(prop: String) extends ConsoleReporter(0) {
     override def onTestResult(name: String, res: org.scalacheck.Test.Result): Unit = {

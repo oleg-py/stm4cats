@@ -1,6 +1,7 @@
 package com.olegpy.stm.misc
 
 import cats.effect.IO
+import cats.effect.concurrent.Deferred
 import cats.implicits._
 import com.olegpy.stm.BaseIOSuite
 import com.olegpy.stm.results._
@@ -21,8 +22,7 @@ object TDeferredTests extends TestSuite with BaseIOSuite {
       } yield ()
     }
 
-    // TODO investigate
-    "TDeferred.get semantically blocks" - disabled {
+    "TDeferred.get semantically blocks" - {
       for {
         d1 <- ofUnit
         d2 <- ofUnit

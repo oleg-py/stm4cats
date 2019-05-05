@@ -6,12 +6,12 @@ import cats.effect.concurrent.MVar
 import com.olegpy.stm.{STM, TRef}
 import cats.implicits._
 
-class TMVar[A] (private val state: TRef[Option[A]]) extends MVar[STM, A] {
+class TMVar[A] (private[stm] val state: TRef[Option[A]]) extends MVar[STM, A] {
   def isEmpty: STM[Boolean] = state.get.map(_.isEmpty)
   def put(a: A): STM[Unit] = state.updOrRetry { case None => a.some }
   def tryPut(a: A): STM[Boolean] = put(a).as(true) orElse STM.pure(false)
   def take: STM[A] = tryTake.unNone
-  def tryTake: STM[Option[A]] = isEmpty.ifM(STM.retry, state.getAndSet(None))
+  def tryTake: STM[Option[A]] = isEmpty.ifM(STM.pure(none[A]), state.getAndSet(None))
   def read: STM[A] = state.get.unNone
 
   def to[F[_]: Concurrent]: MVar[F, A] = mapK(STM.atomicallyK[F])
