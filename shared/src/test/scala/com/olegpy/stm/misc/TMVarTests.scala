@@ -1,6 +1,8 @@
 package com.olegpy.stm.misc
 
 import cats.effect.IO
+import cats.effect.concurrent.MVar
+import cats.implicits._
 import com.olegpy.stm.BaseIOSuite
 import com.olegpy.stm.results._
 import utest._
@@ -47,6 +49,23 @@ object TMVarTests extends TestSuite with BaseIOSuite {
         _   <- mv2.tryPut(()).map(_ ==> false)
         _   <- mv2.tryPut(()).map(_ ==> false)
       } yield ()
+    }
+
+    "TMVar#take" - {
+      def producer(mv: MVar[IO, Int]): IO[Unit] = mv.put(1) >> mv.put(2) >> mv.put(3)
+      def consumer(mv: MVar[IO, Int]): IO[List[Int]] = {
+        def loop(list: List[Int]): IO[List[Int]] = {
+          if (list.length == 3) IO.pure(list.reverse)
+          else nap >> mv.take.map(_ :: list) >>= loop
+        }
+        loop(Nil)
+      }
+
+      for {
+        mv   <- TMVar.emptyIn[IO, Int].map(_.to[IO])
+        _    <- producer(mv).start
+        list <- consumer(mv)
+      } yield list ==> List(1, 2, 3)
     }
   }
 }
