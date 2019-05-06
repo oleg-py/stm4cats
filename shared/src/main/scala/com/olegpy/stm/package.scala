@@ -20,7 +20,7 @@ package object stm {
 
     val unit: STM[Unit] = wrap(IO.unit)
     val retry: STM[Nothing] = delay { throw Retry }
-    def check(c: Boolean): STM[Unit] = retry.whenA(c)
+    def check(c: Boolean): STM[Unit] = retry.unlessA(c)
     def abort[A](ex: Throwable): STM[A] = wrap(IO.raiseError(ex))
 
     def atomically[F[_]] = new AtomicallyFn[F]
@@ -47,7 +47,7 @@ package object stm {
 
       def withFilter(f: A => Boolean): STM[A] = self.filter(f)
 
-      def filterNot(f: A => Boolean): STM[A] = self.flatTap(a => check(f(a)))
+      def filterNot(f: A => Boolean): STM[A] = self.filter(!f(_))
 
       def unNone[B](implicit ev: A <:< Option[B]): STM[B] =
         functorFilter.mapFilter(self)(ev)
@@ -98,8 +98,11 @@ package object stm {
         var journal: Store.Journal = null
         try {
           val result = store.transact {
-            journal = store.current()
-            expose[A](stm).unsafeRunSync()
+            try {
+              expose[A](stm).unsafeRunSync()
+            } finally {
+              journal = store.current()
+            }
           }
           globalLock.notifyOn[F](journal.writtenKeys) as result
         } catch { case Retry =>

@@ -16,6 +16,7 @@ trait StorePlatform {
     private[this] val journal = new ThreadLocal[Journal]
 
     class Journal(
+      start: ju.WeakHashMap[AnyRef, (Any, Long)],
       val id: Long = mkId.getAndIncrement(),
       val uncommitted: ju.HashMap[AnyRef, (Any, Long)] = new ju.HashMap(),
       val reads: ju.HashSet[AnyRef] = new ju.HashSet()
@@ -28,7 +29,7 @@ trait StorePlatform {
         if (uncommitted.containsKey(k)) uncommitted.get(k)._1
         else {
           reads.add(k)
-          committed.get().get(k) match {
+          start.get(k) match {
             case null => null
             case t => t._1
           }
@@ -41,7 +42,7 @@ trait StorePlatform {
       }
 
       def copy() =
-        new Journal(id, new ju.HashMap(uncommitted), reads)
+        new Journal(start, id, new ju.HashMap(uncommitted), reads)
     }
 
     final def current(): Journal = journal.get()
@@ -49,7 +50,7 @@ trait StorePlatform {
     final def transact[A](f: => A): A = {
       @tailrec def reevaluate(): A = {
         val start = committed.get()
-        journal.set(new Journal)
+        journal.set(new Journal(start))
         val result = f
         @tailrec def tryConsolidate(): Boolean = {
           val preCommit = committed.get()

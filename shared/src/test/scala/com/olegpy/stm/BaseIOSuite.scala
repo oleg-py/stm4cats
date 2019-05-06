@@ -8,8 +8,9 @@ import cats.effect.{ContextShift, IO, Timer}
 import utest._
 
 trait BaseIOSuite extends TestSuite {
-  implicit val cs: ContextShift[IO] = IO.contextShift(ExecutionContext.global)
-  implicit val timer: Timer[IO] = IO.timer(ExecutionContext.global)
+  def ec: ExecutionContext = ExecutionContext.global//.fromExecutor(Executors.newSingleThreadExecutor())
+  implicit val cs: ContextShift[IO] = IO.contextShift(ec)
+  implicit val timer: Timer[IO] = IO.timer(ec)
 
   val number = 42
 
