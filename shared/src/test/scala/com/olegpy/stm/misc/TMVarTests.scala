@@ -3,11 +3,11 @@ package com.olegpy.stm.misc
 import cats.effect.IO
 import cats.effect.concurrent.MVar
 import cats.implicits._
-import com.olegpy.stm.BaseIOSuite
+import com.olegpy.stm.NondetIOSuite
 import com.olegpy.stm.results._
 import utest._
 
-object TMVarTests extends TestSuite with BaseIOSuite {
+object TMVarTests extends NondetIOSuite {
   val tests = Tests {
     "TMVar#isEmpty" - {
       for {

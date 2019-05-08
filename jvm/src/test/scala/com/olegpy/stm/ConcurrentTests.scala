@@ -10,7 +10,7 @@ import java.util.concurrent.Executors
 import java.util.concurrent.atomic.AtomicInteger
 
 
-object ConcurrentTests extends TestSuite with BaseIOSuite {
+object ConcurrentTests extends NondetIOSuite {
   val tests = Tests {
     "concurrent transactions can complete w/o reevaluation" - {
       val mkEc = IO {

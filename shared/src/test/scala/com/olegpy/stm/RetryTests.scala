@@ -1,11 +1,11 @@
 package com.olegpy.stm
 
-import cats.effect.{ContextShift, ExitCase, IO, SyncIO, Timer}
+import cats.effect.{ExitCase, IO, SyncIO}
 import utest._
 import cats.implicits._
 
-object RetryTests extends TestSuite with BaseIOSuite {
-  def tests: Tests = Tests {
+object RetryTests extends DeterministicIOSuite {
+  val tests = Tests {
     "Retry with no reads throws an exception" - {
       (STM.retry.commit[IO] >> fail[Unit]).recover {
         case _: PotentialDeadlockException => ()
@@ -70,9 +70,6 @@ object RetryTests extends TestSuite with BaseIOSuite {
     }
 
     "retries are not triggered by writes to independent variables" - {
-      implicit val cs: ContextShift[IO] = IO.contextShift(singleThread)
-      implicit val timer: Timer[IO] = IO.timer(singleThread)
-
       @volatile var count = 0
       val r1, r2, r3 = TRef.in[SyncIO](0).unsafeRunSync()
       val txn: STM[Unit] = for {
@@ -85,10 +82,13 @@ object RetryTests extends TestSuite with BaseIOSuite {
 
       val isJS = ().toString != "()"
 
-      // Use lax checking for JVM, where CPU black magic is more prominent
-      def later(expect: Int): IO[Unit] = nap(timer) >> {
+      def later(expect: Int): IO[Unit] = nap >> {
         if (isJS) IO(assert(count == expect))
-        else IO(assert((expect - 2).to(expect + 2) contains count))
+        else IO {
+          // Use fairly lax checking for JVM, where CPU black magic is more prominent
+          assert((expect - 2).to(expect + 10) contains count)
+          count = expect
+        }
       }
 
       for {

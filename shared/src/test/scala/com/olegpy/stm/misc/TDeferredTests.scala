@@ -2,12 +2,12 @@ package com.olegpy.stm.misc
 
 import cats.effect.IO
 import cats.implicits._
-import com.olegpy.stm.BaseIOSuite
+import com.olegpy.stm.NondetIOSuite
 import com.olegpy.stm.results._
 import utest._
 
 
-object TDeferredTests extends TestSuite with BaseIOSuite {
+object TDeferredTests extends NondetIOSuite {
   val ofUnit = TDeferred.in[IO, Unit].map(_.in[IO])
   val tests = Tests {
     "TDeferred.tryGet works as with regular TryableDeferred" - {

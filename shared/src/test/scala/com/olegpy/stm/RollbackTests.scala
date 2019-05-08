@@ -5,7 +5,7 @@ import utest._
 import cats.implicits._
 import com.olegpy.stm.results._
 
-object RollbackTests extends TestSuite with BaseIOSuite {
+object RollbackTests extends NondetIOSuite {
   val tests = Tests {
     "commit fails on exceptions" - {
       val Dummy = new Exception()

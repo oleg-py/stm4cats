@@ -15,7 +15,7 @@ import cats.kernel.Eq
 import utest.framework.TestPath
 import com.olegpy.stm.misc.{TDeferred, TMVar}
 
-object LawsTests extends TestSuite with BaseIOSuite {
+object LawsTests extends NondetIOSuite {
   val tests = Tests {
     "Monad[STM]" -
       uCheckAll(MonadTests[STM].monad[Int, String, Long])

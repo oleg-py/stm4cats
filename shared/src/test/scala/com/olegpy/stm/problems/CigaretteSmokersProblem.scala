@@ -10,7 +10,7 @@ import utest._
 import cats.implicits._
 
 
-object CigaretteSmokersProblem extends TestSuite with BaseIOSuite {
+object CigaretteSmokersProblem extends NondetIOSuite {
   override def ioTimeout: FiniteDuration = 3.seconds
 
   val tests = Tests {

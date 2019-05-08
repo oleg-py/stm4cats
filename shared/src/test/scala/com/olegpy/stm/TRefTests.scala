@@ -7,7 +7,7 @@ import com.olegpy.stm.results._
 import utest._
 
 
-object TRefTests extends TestSuite with BaseIOSuite {
+object TRefTests extends NondetIOSuite {
   val tests = Tests {
 
     "TRef.apply" - {

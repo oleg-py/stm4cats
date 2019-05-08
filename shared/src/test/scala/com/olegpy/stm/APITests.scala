@@ -4,7 +4,7 @@ import cats.effect.IO
 import utest._
 import cats.syntax.apply._
 
-object APITests extends TestSuite with BaseIOSuite {
+object APITests extends NondetIOSuite {
   val tests = Tests {
     "STM.atomically" - {
       STM.atomically[IO](STM.pure(number))

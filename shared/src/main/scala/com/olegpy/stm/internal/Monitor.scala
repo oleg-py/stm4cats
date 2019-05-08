@@ -60,6 +60,7 @@ class Monitor private[stm] () {
   def waitOn[F[_]](ln: Int, keys: Iterable[AnyRef])(implicit F: Concurrent[F]): F[Unit] =
     F.suspend { store.transact {
       if (ln == lastNotifyT) {
+        store.current().update(this, lastNotifyT + 1)
         val rc = new RetryCallback(keys)
         F.cancelable[Unit] { cb =>
           rc.catsCb = cb
