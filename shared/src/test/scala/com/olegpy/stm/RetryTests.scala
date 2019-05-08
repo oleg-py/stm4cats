@@ -1,6 +1,6 @@
 package com.olegpy.stm
 
-import cats.effect.{ExitCase, IO, SyncIO}
+import cats.effect.{ContextShift, ExitCase, IO, SyncIO, Timer}
 import utest._
 import cats.implicits._
 
@@ -70,6 +70,9 @@ object RetryTests extends TestSuite with BaseIOSuite {
     }
 
     "retries are not triggered by writes to independent variables" - {
+      implicit val cs: ContextShift[IO] = IO.contextShift(singleThread)
+      implicit val timer: Timer[IO] = IO.timer(singleThread)
+
       @volatile var count = 0
       val r1, r2, r3 = TRef.in[SyncIO](0).unsafeRunSync()
       val txn: STM[Unit] = for {
@@ -80,17 +83,23 @@ object RetryTests extends TestSuite with BaseIOSuite {
         _  <- r3.get // after-check gets should not affect anything
       } yield ()
 
-      def later(block: => Unit): IO[Unit] = nap >> nap >> IO(block)
+      val isJS = ().toString != "()"
+
+      // Use lax checking for JVM, where CPU black magic is more prominent
+      def later(expect: Int): IO[Unit] = nap(timer) >> {
+        if (isJS) IO(assert(count == expect))
+        else IO(assert((expect - 2).to(expect + 2) contains count))
+      }
 
       for {
-        f <- txn.commit[IO].start
-        _ <- later { count ==> 1 } // Tried once, but failed
+        f <- txn.commit[IO].start(cs)
+        _ <- later(1) // Tried once, but failed
         _ <- r1.set(number).commit[IO]
-        _ <- later { count ==> 2 } // Tried twice, as we modified r1
+        _ <- later(2) // Tried twice, as we modified r1
         _ <- r3.set(number).commit[IO]
-        _ <- later { count ==> 2 } // Didn't try again, as we didn't touch r1 or r2
+        _ <- later(2) // Didn't try again, as we didn't touch r1 or r2
         _ <- r2.set(number + 1).commit[IO]
-        _ <- later { count ==> 3 } // Tried again, and should complete at this point
+        _ <- later(3) // Tried again, and should complete at this point
         _ <- f.join
       } yield ()
     }

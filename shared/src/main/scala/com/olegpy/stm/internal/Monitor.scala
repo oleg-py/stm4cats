@@ -11,10 +11,16 @@ class Monitor private[stm] () {
   private[this] val store: Store = /*_*/Store.forPlatform()/*_*/
   private[this] val rightUnit = Right(())
 
-  private[this] class RetryCallback (catsCb: Callback, keys: Iterable[AnyRef]) {
-    keys.foreach(addToSet(_, this))
+  private[this] class RetryCallback(keys: Iterable[AnyRef]) {
+    @volatile var catsCb: Callback = _
+    keys.foreach(listenTo)
     def invoke(): Unit = {
       catsCb(rightUnit)
+    }
+
+    def listenTo(key: AnyRef): Unit = {
+      addToSet(key, this)
+      addToSet(this, key)
     }
 
     private[this] def addToSet(key: AnyRef, value: Any): Unit = {
@@ -34,46 +40,38 @@ class Monitor private[stm] () {
     }
 
     def removeAllKeys(): Unit = {
-      keys.foreach(removeFromSet(_, this))
+      val j = store.current()
+      j.read(this) match {
+        case set: Set[AnyRef @unchecked] => set.foreach(removeFromSet(_, this))
+        // This might not be hit in a single test run, avoid fluctuating coverage
+        // $COVERAGE-OFF$
+        case _ =>
+        // $COVERAGE-ON$
+      }
+      j.update(this, null)
     }
   }
 
-  def waitOn[F[_]](keys: Iterable[AnyRef])(implicit F: Concurrent[F]): F[Unit] = Concurrent.cancelableF[F, Unit] { cb =>
-    store.transact {
-      val ks = keys.toSet
-      store.current().read(this) match {
-        case l: List[Set[AnyRef] @unchecked] if l.exists(_.exists(ks)) =>
-          null
-        case _ =>
-          val retryCallback = new RetryCallback(cb, keys)
-          F.delay { store.transact(retryCallback.removeAllKeys()) }
-      }
-    } match {
-      case null =>
-        F.delay { cb(rightUnit) }.start.map(_.cancel)
-      case token: F[Unit] @unchecked => F.pure(token)
-    }
-  }
+  store.transact(store.current().update(this, 0))
+
+  def lastNotify: Int = store.transact { lastNotifyT }
+  private def lastNotifyT = store.current().read(this).asInstanceOf[Int]
+
+  def waitOn[F[_]](ln: Int, keys: Iterable[AnyRef])(implicit F: Concurrent[F]): F[Unit] =
+    F.suspend { store.transact {
+      if (ln == lastNotifyT) {
+        val rc = new RetryCallback(keys)
+        F.cancelable[Unit] { cb =>
+          rc.catsCb = cb
+          F.delay { store.transact(rc.removeAllKeys()) }
+        }
+      } else F.unit
+    }}
 
   def notifyOn[F[_]](keys: Iterable[AnyRef])(implicit F: Concurrent[F]): F[Unit] = F.suspend {
-    val ks = keys.toSet
-
-    def unregister(): Unit = {
-      store.transact {
-        val j = store.current()
-        j.read(this) match {
-          case l: List[Set[AnyRef] @unchecked] => j.update(this, l.filterNot(_ == ks))
-          case _ =>
-        }
-      }
-    }
-
-    val jobs = store.transact {
+    store.transact {
       val j = store.current()
-      j.update(this, j.read(this) match {
-        case l: List[Set[AnyRef] @unchecked] => ks :: l
-        case _ => ks :: Nil
-      })
+      j.update(this, lastNotifyT + 1)
       val cbs = Set.newBuilder[RetryCallback]
       keys.foreach { key =>
         j.read(key) match {
@@ -81,19 +79,12 @@ class Monitor private[stm] () {
           case _ =>
         }
       }
-
       val allJobs = cbs.result()
-      allJobs.foreach(_.removeAllKeys())
-      allJobs
+      if (allJobs.isEmpty) F.unit
+      else {
+        allJobs.foreach(_.removeAllKeys())
+        F.delay(allJobs.foreach(_.invoke())).start.void
+      }
     }
-
-    if (jobs.isEmpty) {
-      unregister()
-      F.unit
-    }
-    else F.delay {
-      unregister()
-      jobs.foreach(_.invoke())
-    }.start.void
   }
 }

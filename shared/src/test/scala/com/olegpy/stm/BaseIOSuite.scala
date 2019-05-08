@@ -7,10 +7,10 @@ import cats.implicits._
 import cats.effect.{ContextShift, IO, Timer}
 import utest._
 
-trait BaseIOSuite extends TestSuite {
-  def ec: ExecutionContext = ExecutionContext.global//.fromExecutor(Executors.newSingleThreadExecutor())
-  implicit val cs: ContextShift[IO] = IO.contextShift(ec)
-  implicit val timer: Timer[IO] = IO.timer(ec)
+trait BaseIOSuite extends TestSuite with SingleThreadEC with SingleThreadECImpl {
+  def ec: ExecutionContext = ExecutionContext.global
+  implicit def cs: ContextShift[IO] = IO.contextShift(ec)
+  implicit def timer: Timer[IO] = IO.timer(ec)
 
   val number = 42
 
@@ -26,9 +26,9 @@ trait BaseIOSuite extends TestSuite {
   def ioTestTimed[A](timeout: FiniteDuration)(io: IO[A]): Future[A] =
     io.timeout(timeout).unsafeToFuture()
 
-  def nap: IO[Unit] = IO.sleep(10.millis)
+  def nap(implicit t: Timer[IO]): IO[Unit] = t.sleep(10.millis)
 
-  def longNap: IO[Unit] = nap.replicateA(10).void
+  def longNap(implicit t: Timer[IO]): IO[Unit] = nap(t).replicateA(10).void
 
   def fail[A]: IO[A] = IO.suspend {
     assert(false)

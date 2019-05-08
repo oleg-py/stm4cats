@@ -11,7 +11,7 @@ import cats.implicits._
 
 
 object CigaretteSmokersProblem extends TestSuite with BaseIOSuite {
-  override def ioTimeout: FiniteDuration = 10.seconds
+  override def ioTimeout: FiniteDuration = 3.seconds
 
   val tests = Tests {
     "Cigarette smokers problem" - {
@@ -41,14 +41,14 @@ object CigaretteSmokersProblem extends TestSuite with BaseIOSuite {
 
   class Table(queue: TQueue[Ingredient]) {
     def put(ingredient: Ingredient): STM[Unit] = queue.enqueue(ingredient)
-    def things: STM[Set[Ingredient]] = queue.dequeue.replicateA(2).map(_.toSet)
+    def takeThings: STM[Set[Ingredient]] = queue.dequeue.replicateA(2).map(_.toSet)
   }
 
   def mkTable: IO[Table] = TQueue.boundedIn[IO, Ingredient](2).map(new Table(_))
 
   class Smoker (ingredient: Ingredient, table: Table) {
     def buildACig(puff: IO[Unit]): IO[Unit] =
-      table.things.filterNot(_(ingredient)).commit[IO] >> puff
+      table.takeThings.filterNot(_ contains ingredient).commit[IO] >> puff
   }
 
   class Dealer(table: Table) {
