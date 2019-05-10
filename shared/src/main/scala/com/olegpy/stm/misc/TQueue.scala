@@ -68,7 +68,7 @@ object TQueue {
     }
   }
 
-  def unboundedIn[F[_]: Sync, A]: F[TQueue[Nothing]] = STM.tryCommitSync(unbounded)
+  def unboundedIn[F[_]: Sync, A]: F[TQueue[A]] = STM.tryCommitSync(unbounded)
 
   def bounded[A](max: Int): STM[TQueue[A]] = TRef(Vector.empty[A]).map { state =>
     new TQueue[A] {
@@ -89,7 +89,10 @@ object TQueue {
 
   def circularBuffer[A](max: Int): STM[TQueue[A]] = TRef(Vector.empty[A]).map { state =>
     new TQueue[A] {
-      def offer(a: A): STM[Boolean] = state.update { _.take(max - 1) :+ a } as true
+      def offer(a: A): STM[Boolean] = state.update {
+        case v if v.length < max => v :+ a
+        case v => v.drop(1) :+ a
+      } as true
       def tryPeek: STM[Option[A]] = state.get.map(_.headOption)
       protected def drop1: STM[Unit] = state.update(_.drop(1))
 
