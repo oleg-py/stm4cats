@@ -33,7 +33,7 @@ trait TRef[A] extends Ref[STM, A] {
 
   override def toString: String = s"TRef($unsafeLastValue)"
 
-  def unsafeLastValue: A
+  def unsafeLastValue(): A
 }
 
 object TRef {
@@ -50,21 +50,21 @@ object TRef {
       def get: STM[Unit] = STM.unit
       def set(a: Unit): STM[Unit] = STM.unit
 
-      def unsafeLastValue: Unit = ()
+      def unsafeLastValue(): Unit = ()
     }
 
     def imap[A, B](fa: TRef[A])(f: A => B)(g: B => A): TRef[B] = new TRef[B] {
       def get: STM[B] = fa.get map f
       def set(a: B): STM[Unit] = fa.set(g(a))
 
-      def unsafeLastValue: B = f(fa.unsafeLastValue)
+      def unsafeLastValue(): B = f(fa.unsafeLastValue)
     }
 
     def product[A, B](fa: TRef[A], fb: TRef[B]): TRef[(A, B)] = new TRef[(A, B)] {
       def get: STM[(A, B)] = fa.get product fb.get
       def set(a: (A, B)): STM[Unit] = fa.set(a._1) *> fb.set(a._2)
 
-      def unsafeLastValue: (A, B) = (fa.unsafeLastValue, fb.unsafeLastValue)
+      def unsafeLastValue(): (A, B) = (fa.unsafeLastValue, fb.unsafeLastValue)
     }
   }
 }

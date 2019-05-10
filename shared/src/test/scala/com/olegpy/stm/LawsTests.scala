@@ -7,13 +7,13 @@ import cats.laws.discipline.arbitrary._
 import cats.effect.laws.discipline.arbitrary._
 import cats.effect.laws.util.TestContext
 import cats.effect.laws.util.TestInstances._
-import org.scalacheck.Arbitrary
+import org.scalacheck.{Arbitrary, Gen}
 import org.scalacheck.util.{ConsoleReporter, Pretty}
 import utest._
 import cats.implicits._
 import cats.kernel.Eq
 import utest.framework.TestPath
-import com.olegpy.stm.misc.{TDeferred, TMVar}
+import com.olegpy.stm.misc.{TDeferred, TMVar, TQueue}
 
 object LawsTests extends NondetIOSuite {
   val tests = Tests {
@@ -37,6 +37,9 @@ object LawsTests extends NondetIOSuite {
 
     "Invariant[TMVar]" -
       uCheckAll(InvariantTests[TMVar].invariant[Int, String, Long])
+
+    "Invariant[TQueue]" -
+      uCheckAll(InvariantTests[TQueue].invariant[Int, String, Long])
   }
 
   implicit val tc: TestContext = TestContext()
@@ -52,6 +55,23 @@ object LawsTests extends NondetIOSuite {
   implicit def arbDef[A](implicit a: Arbitrary[Option[A]]): Arbitrary[TDeferred[A]] =
     Arbitrary(arbRef[Option[A]].arbitrary.map(new TDeferred(_)))
 
+  implicit def arbQueue[A](implicit a: Arbitrary[List[A]]): Arbitrary[TQueue[A]] =
+    Arbitrary {
+      a.arbitrary.flatMap { initial =>
+        val len = initial.length
+        val allowSync = len <= 1
+        val options = List(
+          TQueue.bounded[A](len),
+          TQueue.unbounded[A],
+          TQueue.circularBuffer[A](len)
+        ) ::: (if (allowSync) List(TQueue.synchronous[A]) else Nil)
+
+        Gen.oneOf(options).map(q =>
+          STM.tryCommitSync[IO, TQueue[A]](q.flatTap(_.enqueueAll(initial))).unsafeRunSync()
+        )
+      }
+    }
+
   implicit def eq[A: Eq]: Eq[STM[A]] = Eq[IO[A]].contramap(STM.atomically[IO](_))
 
   implicit def eqRef[A: Eq: Arbitrary]: Eq[TRef[A]] = Eq.instance[TRef[A]] { (l, r) =>
@@ -64,6 +84,14 @@ object LawsTests extends NondetIOSuite {
 
   implicit def eqTDeferred[A: Eq: Arbitrary]: Eq[TDeferred[A]] = Eq.by(_.state)
   implicit def eqTMVar[A: Eq: Arbitrary]: Eq[TMVar[A]] = Eq.by(_.state)
+  implicit def eqTQueue[A: Eq: Arbitrary]: Eq[TQueue[A]] = Eq.instance { (q1, q2) =>
+    STM.tryCommitSync[IO, Boolean]{
+      for {
+        _ <- q1.dequeueUpTo(Int.MaxValue)
+        emptied  <- q2.isEmpty
+      } yield emptied
+    }.unsafeRunSync()
+  }
 
   class UTestReporter(prop: String) extends ConsoleReporter(0) {
     override def onTestResult(name: String, res: org.scalacheck.Test.Result): Unit = {

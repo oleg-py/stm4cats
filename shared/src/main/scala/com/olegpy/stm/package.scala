@@ -3,7 +3,7 @@ package com.olegpy
 import scala.language.implicitConversions
 
 import cats.effect.{Concurrent, IO, Sync}
-import cats.{Defer, FunctorFilter, Monad, MonoidK, ~>}
+import cats.{Defer, FunctorFilter, Monad, Monoid, MonoidK, StackSafeMonad, ~>}
 import cats.implicits._
 import com.olegpy.stm.internal.{Monitor, Retry, Store}
 
@@ -27,6 +27,7 @@ package object stm {
 
     def tryCommitSync[F[_], A](stm: STM[A])(implicit F: Sync[F]): F[A] =
       F.delay(store.transact { expose[A](stm).unsafeRunSync() })
+       .adaptError { case Retry => new UnexpectedRetryInSyncException } // Add a stack trace, basically
 
     final class AtomicallyFn[F[_]](private val dummy: Boolean = false) extends AnyVal {
       def apply[A](stm: STM[A])(implicit F: Concurrent[F]): F[A] =
@@ -63,8 +64,8 @@ package object stm {
       }
     }
 
-    implicit val monad: Monad[STM] with Defer[STM] =
-      IO.ioEffect.asInstanceOf[Monad[STM] with Defer[STM]]
+    implicit val monad: StackSafeMonad[STM] with Defer[STM] =
+      IO.ioEffect.asInstanceOf[StackSafeMonad[STM] with Defer[STM]]
 
     implicit def stmToAllMonadOps[A](stm: STM[A]): Monad.AllOps[STM, A] =
       Monad.ops.toAllMonadOps(stm)
@@ -81,8 +82,12 @@ package object stm {
       def empty[A]: STM[A] = STM.retry
       def combineK[A](a: STM[A], b: STM[A]): STM[A] = a orElse b
     }
+
     implicit def stmToMonoidKOps[A](stm: STM[A]): MonoidK.AllOps[STM, A] =
       MonoidK.ops.toAllMonoidKOps(stm)
+
+    implicit def monoid[A: Monoid]: Monoid[STM[A]] =
+      IO.ioMonoid[A].asInstanceOf[Monoid[STM[A]]]
 
 
     private[this] def wrap[A](io: IO[A]): STM[A] = io.asInstanceOf[STM[A]]

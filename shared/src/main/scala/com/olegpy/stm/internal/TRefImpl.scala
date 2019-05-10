@@ -12,6 +12,6 @@ private[stm] class TRefImpl[A](initial: A) extends TRef[A] {
     STM.store.current().update(this, a)
   }
 
-  def unsafeLastValue: A =
+  def unsafeLastValue(): A =
     STM.store.unsafeReadCommitted(this).asInstanceOf[A]
 }
