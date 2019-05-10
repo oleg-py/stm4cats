@@ -14,7 +14,7 @@ Experiment goals:
 
 ## Add it
 ```scala
-resolvers += Resolvers.sonatypeRepo("snapshots")
+resolvers += Resolver.sonatypeRepo("snapshots")
 // Use %%% for Scala.JS
 libraryDependencies += "com.olegpy" %% "stm4cats" % "0.1.0-SNAPSHOT"
 ```
