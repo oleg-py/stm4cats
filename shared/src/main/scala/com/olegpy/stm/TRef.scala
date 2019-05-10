@@ -31,9 +31,9 @@ trait TRef[A] extends Ref[STM, A] {
 
   def modifyState[B](state: State[A, B]): STM[B] = modify(state.run(_).value)
 
-  protected[stm] def unsafeLastValue: A
-
   override def toString: String = s"TRef($unsafeLastValue)"
+
+  def unsafeLastValue: A
 }
 
 object TRef {
@@ -42,7 +42,7 @@ object TRef {
 
   final class InPartiallyApplied[F[_]](private val dummy: Boolean = false) extends AnyVal {
     def apply[A](initial: A)(implicit F: Sync[F]): F[TRef[A]] =
-      STM.unsafeToSync(TRef(initial))
+      STM.tryCommitSync(TRef(initial))
   }
 
   implicit val invariantMonoidal: InvariantMonoidal[TRef] = new InvariantMonoidal[TRef] {
@@ -50,21 +50,21 @@ object TRef {
       def get: STM[Unit] = STM.unit
       def set(a: Unit): STM[Unit] = STM.unit
 
-      protected[stm] def unsafeLastValue: Unit = ()
+      def unsafeLastValue: Unit = ()
     }
 
     def imap[A, B](fa: TRef[A])(f: A => B)(g: B => A): TRef[B] = new TRef[B] {
       def get: STM[B] = fa.get map f
       def set(a: B): STM[Unit] = fa.set(g(a))
 
-      protected[stm] def unsafeLastValue: B = f(fa.unsafeLastValue)
+      def unsafeLastValue: B = f(fa.unsafeLastValue)
     }
 
     def product[A, B](fa: TRef[A], fb: TRef[B]): TRef[(A, B)] = new TRef[(A, B)] {
       def get: STM[(A, B)] = fa.get product fb.get
       def set(a: (A, B)): STM[Unit] = fa.set(a._1) *> fb.set(a._2)
 
-      protected[stm] def unsafeLastValue: (A, B) = (fa.unsafeLastValue, fb.unsafeLastValue)
+      def unsafeLastValue: (A, B) = (fa.unsafeLastValue, fb.unsafeLastValue)
     }
   }
 }

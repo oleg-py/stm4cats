@@ -17,7 +17,7 @@ class TMVar[A] (private[stm] val state: TRef[Option[A]]) extends MVar[STM, A] {
   def to[F[_]: Concurrent]: MVar[F, A] = mapK(STM.atomicallyK[F])
 
   override def toString: String = state.unsafeLastValue match {
-    case Some(value) => s"TMVar(<full>: $value)"
+    case Some(value) => s"TMVar(<full: $value>)"
     case None => "TMVar(<empty>)"
   }
 }
@@ -26,8 +26,8 @@ object TMVar {
   def empty[A]: STM[TMVar[A]] = TRef(none[A]).map(new TMVar(_))
   def apply[A](initial: A): STM[TMVar[A]] = TRef(initial.some).map(new TMVar(_))
 
-  def in[F[_]: Sync, A](initial: A): F[TMVar[A]] = STM.unsafeToSync(TMVar(initial))
-  def emptyIn[F[_]: Sync, A]: F[TMVar[A]] = STM.unsafeToSync(TMVar.empty)
+  def in[F[_]: Sync, A](initial: A): F[TMVar[A]] = STM.tryCommitSync(TMVar(initial))
+  def emptyIn[F[_]: Sync, A]: F[TMVar[A]] = STM.tryCommitSync(TMVar.empty)
 
   implicit val invariantInstance: Invariant[TMVar] = new Invariant[TMVar] {
     def imap[A, B](fa: TMVar[A])(f: A => B)(g: B => A): TMVar[B] = {

@@ -40,5 +40,14 @@ object TDeferredTests extends NondetIOSuite {
         r <- d.complete(()).result
       } yield assert(r.is[STMAbort])
     }
+
+    "TDeferred#toString shows a state" - {
+      for {
+        d <- TDeferred.in[IO, Int]
+        _ =  d.toString ==> "TDeferred(<not completed>)"
+        _ <- d.complete(number).commit[IO]
+        _ =  d.toString ==> s"TDeferred(<completed: $number>)"
+      } yield ()
+    }
   }
 }

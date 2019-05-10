@@ -9,7 +9,7 @@ import java.{util => ju}
 import java.util.concurrent.atomic.{AtomicLong, AtomicReference}
 
 
-trait StorePlatform {
+private[stm] trait StorePlatform {
   def forPlatform(): Store = new Store {
     private[this] val committed =
       new AtomicReference(new ju.WeakHashMap[AnyRef, (Any, Long)]())
@@ -105,7 +105,10 @@ trait StorePlatform {
     }
 
     def unsafeReadCommitted(k: AnyRef): Any = committed.get().get(k) match {
-      case null => null
+      case null =>
+        // $COVERAGE-OFF$
+        null
+        // $COVERAGE-ON$
       case t => t._1
     }
   }

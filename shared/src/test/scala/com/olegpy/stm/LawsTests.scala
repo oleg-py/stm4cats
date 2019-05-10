@@ -57,7 +57,7 @@ object LawsTests extends NondetIOSuite {
   implicit def eqRef[A: Eq: Arbitrary]: Eq[TRef[A]] = Eq.instance[TRef[A]] { (l, r) =>
     val next = implicitly[Arbitrary[A]].arbitrary.sample.get
     val check = (l.get, r.get).mapN(_ == _)
-    STM.unsafeToSync[IO, Boolean] {
+    STM.tryCommitSync[IO, Boolean] {
       (check, l.set(next), check).mapN((a, _, b) => a && b)
     }.unsafeRunSync()
   }

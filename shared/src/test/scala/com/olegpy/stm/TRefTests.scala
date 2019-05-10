@@ -56,5 +56,17 @@ object TRefTests extends NondetIOSuite {
         }
       } yield ()
     }
+
+    "TRef#toString prints commited value" - {
+      for {
+        tr <- TRef.in[IO](0)
+        _  <- tr.set(number).commit[IO]
+        _  =  tr.toString ==> s"TRef($number)"
+        unitLike = TRef.invariantMonoidal.unit.imap(_ => "()")(_ => ())
+        _  =  unitLike.toString ==> "TRef(())"
+        _  =  tr.imap(_ + 1)(_ - 1).toString ==> s"TRef(${number + 1})"
+        _  = (tr, unitLike).tupled.toString ==> s"TRef(($number,()))"
+      } yield ()
+    }
   }
 }

@@ -5,7 +5,7 @@ import scala.scalajs.js
 import scala.util.control.NonFatal
 
 
-trait StorePlatform {
+private[stm] trait StorePlatform {
   def forPlatform(): Store = new Store {
     import scala.scalajs.js.DynamicImplicits._
     @inline implicit def any2JSAny(x: Any): js.Any = x.asInstanceOf[js.Any]

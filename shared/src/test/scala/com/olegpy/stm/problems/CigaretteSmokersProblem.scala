@@ -3,7 +3,6 @@ package com.olegpy.stm.problems
 import scala.concurrent.duration._
 import scala.util.Random
 
-import cats.effect.ExitCase.Canceled
 import cats.effect.IO
 import com.olegpy.stm.misc.TQueue
 import com.olegpy.stm._

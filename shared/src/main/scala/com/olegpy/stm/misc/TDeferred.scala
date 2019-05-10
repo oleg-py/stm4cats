@@ -22,14 +22,14 @@ class TDeferred[A] (private[stm] val state: TRef[Option[A]]) extends TryableDefe
   }
 
   override def toString: String = state.unsafeLastValue match {
-    case Some(value) => s"TDeferred(<completed>: $value)"
+    case Some(value) => s"TDeferred(<completed: $value>)"
     case None => s"TDeferred(<not completed>)"
   }
 }
 
 object TDeferred {
   def apply[A]: STM[TDeferred[A]] = TRef(Option.empty[A]).map(new TDeferred(_))
-  def in[F[_]: Sync, A]: F[TDeferred[A]] = STM.unsafeToSync(apply)
+  def in[F[_]: Sync, A]: F[TDeferred[A]] = STM.tryCommitSync(apply)
 
   implicit val invariant: Invariant[TDeferred] = new Invariant[TDeferred] {
     def imap[A, B](fa: TDeferred[A])(f: A => B)(g: B => A): TDeferred[B] = {

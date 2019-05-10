@@ -67,5 +67,14 @@ object TMVarTests extends NondetIOSuite {
         list <- consumer(mv)
       } yield list ==> List(1, 2, 3)
     }
+
+    "TMVar#toString shows a state" - {
+      for {
+        mv <- TMVar.emptyIn[IO, Int]
+        _  = mv.toString ==> "TMVar(<empty>)"
+        _  <- mv.put(number).commit[IO]
+        _  = mv.toString ==> s"TMVar(<full: $number>)"
+      } yield ()
+    }
   }
 }

@@ -7,7 +7,7 @@ import cats.effect.Concurrent
 import cats.implicits._
 
 
-class Monitor private[stm] () {
+private[stm] class Monitor {
   type Callback = Either[Throwable, Unit] => Unit
   private[this] val store: Store = /*_*/Store.forPlatform()/*_*/
   private[this] val rightUnit = Right(())
@@ -28,7 +28,9 @@ class Monitor private[stm] () {
     val j = store.current()
     val keys = j.read(cb).asInstanceOf[collection.Set[AnyRef @unchecked]]
     j.update(cb, null) // TODO - wipe?
-    val kit = if (keys eq null) Iterator.empty else keys.iterator
+    val kit = // $COVERAGE-OFF$
+      if (keys eq null) Iterator.empty else keys.iterator
+      // $COVERAGE-ON$
     while (kit.hasNext) {
       val k = kit.next()
       val PendingUpdate(lnv, cbs) = j.read(k)

@@ -29,11 +29,12 @@ object TQueue {
         .flatMap(_.fold(slot.set(a.some).as(true))(_ => STM.pure(false)))
       def tryDequeue: STM[Option[A]] = slot.get
 
-      override def toString: String = s"TQueue(synchronous, ${slot.unsafeLastValue.getOrElse("<empty>")})"
+      override def toString: String =
+        s"TQueue(synchronous)(${slot.unsafeLastValue.getOrElse("<empty>")})"
     }
   }
 
-  def synchronousIn[F[_]: Sync, A]: F[TQueue[A]] = STM.unsafeToSync(synchronous)
+  def synchronousIn[F[_]: Sync, A]: F[TQueue[A]] = STM.tryCommitSync(synchronous)
 
   def unbounded[A]: STM[TQueue[A]] = TRef(Queue.empty[A]).map { state =>
     new TQueue[A] {
@@ -46,11 +47,11 @@ object TQueue {
         }
       }
 
-      override def toString: String = s"TQueue(unbounded, ${state.unsafeLastValue.mkString(", ")})"
+      override def toString: String = s"TQueue(unbounded)(${state.unsafeLastValue.mkString(", ")})"
     }
   }
 
-  def unboundedIn[F[_]: Sync, A]: F[TQueue[Nothing]] = STM.unsafeToSync(unbounded)
+  def unboundedIn[F[_]: Sync, A]: F[TQueue[Nothing]] = STM.tryCommitSync(unbounded)
 
   def bounded[A](max: Int): STM[TQueue[A]] = TRef(Vector.empty[A]).map { state =>
     new TQueue[A] {
@@ -64,11 +65,11 @@ object TQueue {
         case empty => (empty, none)
       }
 
-      override def toString: String = s"TQueue(bounded($max), ${state.unsafeLastValue.mkString(", ")})"
+      override def toString: String = s"TQueue(bounded($max))(${state.unsafeLastValue.mkString(", ")})"
     }
   }
 
-  def boundedIn[F[_]: Sync, A](max: Int): F[TQueue[A]] = STM.unsafeToSync(bounded(max))
+  def boundedIn[F[_]: Sync, A](max: Int): F[TQueue[A]] = STM.tryCommitSync(bounded(max))
 
   def circularBuffer[A](max: Int): STM[TQueue[A]] = TRef(Vector.empty[A]).map { state =>
     new TQueue[A] {
@@ -78,12 +79,12 @@ object TQueue {
         case empty => (empty, none)
       }
 
-      override def toString: String = s"TQueue(circularBuffer($max), ${state.unsafeLastValue.mkString(", ")})"
+      override def toString: String = s"TQueue(circularBuffer($max))(${state.unsafeLastValue.mkString(", ")})"
     }
   }
 
   def circularBufferIn[F[_]: Sync, A](max: Int): F[TQueue[A]] =
-    STM.unsafeToSync(circularBuffer(max))
+    STM.tryCommitSync(circularBuffer(max))
 
   implicit val invariant: Invariant[TQueue] = new Invariant[TQueue] {
     def imap[A, B](fa: TQueue[A])(f: A => B)(g: B => A): TQueue[B] = new TQueue[B] {
