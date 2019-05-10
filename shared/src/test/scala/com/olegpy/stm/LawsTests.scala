@@ -12,6 +12,7 @@ import org.scalacheck.util.{ConsoleReporter, Pretty}
 import utest._
 import cats.implicits._
 import cats.kernel.Eq
+import cats.kernel.laws.discipline.MonoidTests
 import utest.framework.TestPath
 import com.olegpy.stm.misc.{TDeferred, TMVar, TQueue}
 
@@ -25,6 +26,9 @@ object LawsTests extends NondetIOSuite {
 
     "MonoidK[STM]" -
       uCheckAll(MonoidKTests[STM].monoidK[Int])
+
+    "Monoid[STM[A]]" -
+      uCheckAll(MonoidTests[STM[Int]].monoid)
 
     "FunctorFilter[STM]" -
       uCheckAll(FunctorFilterTests[STM].functorFilter[Int, String, Long])
