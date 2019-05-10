@@ -20,6 +20,11 @@ class TDeferred[A] (private[stm] val state: TRef[Option[A]]) extends TryableDefe
     def get: F[A] = outer.get.commit[F]
     def complete(a: A): F[Unit] = outer.complete(a).commit[F]
   }
+
+  override def toString: String = state.unsafeLastValue match {
+    case Some(value) => s"TDeferred(<completed>: $value)"
+    case None => s"TDeferred(<not completed>)"
+  }
 }
 
 object TDeferred {

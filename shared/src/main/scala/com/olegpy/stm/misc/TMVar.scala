@@ -15,6 +15,11 @@ class TMVar[A] (private[stm] val state: TRef[Option[A]]) extends MVar[STM, A] {
   def read: STM[A] = state.get.unNone
 
   def to[F[_]: Concurrent]: MVar[F, A] = mapK(STM.atomicallyK[F])
+
+  override def toString: String = state.unsafeLastValue match {
+    case Some(value) => s"TMVar(<full>: $value)"
+    case None => "TMVar(<empty>)"
+  }
 }
 
 object TMVar {

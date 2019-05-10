@@ -61,7 +61,7 @@ trait StorePlatform {
             val ksi = j.reads.iterator()
             while (ksi.hasNext && !hasConflict) {
               val key = ksi.next()
-              hasConflict = start.get(key) != preCommit.get(key)
+              hasConflict = start.get(key) ne preCommit.get(key)
             }
           }
           if (hasConflict) {
@@ -100,6 +100,11 @@ trait StorePlatform {
         journal.set(j)
         throw ex
       }
+    }
+
+    def unsafeReadCommitted(k: AnyRef): Any = committed.get().get(k) match {
+      case null => null
+      case t => t._1
     }
   }
 }

@@ -30,7 +30,7 @@ abstract class NondetIOSuite extends TestSuite with IOSuiteUtils {
   implicit def timer: Timer[IO] = IO.timer(ec)
 
 
-  def ioTimeout: FiniteDuration = 750.millis
+  def ioTimeout: FiniteDuration = 1.second
 
   override def utestWrap(path: Seq[String], runBody: => Future[Any])(implicit ec: ExecutionContext): Future[Any] = {
     super.utestWrap(path, runBody.flatMap {
@@ -50,6 +50,7 @@ abstract class DeterministicIOSuite extends TestSuite with IOSuiteUtils {
       case io: IO[_] =>
         val f = io.unsafeToFuture()
         tc.tick(365.days)
+        assert(tc.state.tasks.isEmpty)
         Future.fromTry(f.value.get)
       case other => Future.successful(other)
     })(new ExecutionContext {

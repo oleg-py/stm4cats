@@ -74,5 +74,7 @@ trait StorePlatform {
         throw ex
       }
     }
+
+    def unsafeReadCommitted(k: AnyRef): Any = committed.get(k)
   }
 }

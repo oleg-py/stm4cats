@@ -3,6 +3,7 @@ package com.olegpy.stm.problems
 import scala.concurrent.duration._
 import scala.util.Random
 
+import cats.effect.ExitCase.Canceled
 import cats.effect.IO
 import com.olegpy.stm.misc.TQueue
 import com.olegpy.stm._
@@ -11,7 +12,7 @@ import cats.implicits._
 
 
 object CigaretteSmokersProblem extends NondetIOSuite {
-  override def ioTimeout: FiniteDuration = 3.seconds
+  override def ioTimeout: FiniteDuration = 30.seconds
 
   val tests = Tests {
     "Cigarette smokers problem" - {
@@ -20,7 +21,7 @@ object CigaretteSmokersProblem extends NondetIOSuite {
         table   <- mkTable
         deal    <- new Dealer(table).dealRandom.replicateA(attempts).start
         counter <- TRef.in[IO](0)
-        puff    = (counter.update(_ + 1) >> counter.get).commit[IO] >> nap
+        puff    = counter.update(_ + 1).commit[IO]// >> nap
         smoke   <- allIngredients.foldMapM {
           new Smoker(_, table).buildACig(puff).foreverM[Unit].start
         }
@@ -42,6 +43,7 @@ object CigaretteSmokersProblem extends NondetIOSuite {
   class Table(queue: TQueue[Ingredient]) {
     def put(ingredient: Ingredient): STM[Unit] = queue.enqueue(ingredient)
     def takeThings: STM[Set[Ingredient]] = queue.dequeue.replicateA(2).map(_.toSet)
+    override def toString: String = s"Table($queue)"
   }
 
   def mkTable: IO[Table] = TQueue.boundedIn[IO, Ingredient](2).map(new Table(_))

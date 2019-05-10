@@ -28,6 +28,8 @@ object TQueue {
       def offer(a: A): STM[Boolean] = slot.get
         .flatMap(_.fold(slot.set(a.some).as(true))(_ => STM.pure(false)))
       def tryDequeue: STM[Option[A]] = slot.get
+
+      override def toString: String = s"TQueue(synchronous, ${slot.unsafeLastValue.getOrElse("<empty>")})"
     }
   }
 
@@ -43,6 +45,8 @@ object TQueue {
           case Some((hd, rest)) => (rest, hd.some)
         }
       }
+
+      override def toString: String = s"TQueue(unbounded, ${state.unsafeLastValue.mkString(", ")})"
     }
   }
 
@@ -59,6 +63,8 @@ object TQueue {
         case hd +: tail => (tail, hd.some)
         case empty => (empty, none)
       }
+
+      override def toString: String = s"TQueue(bounded($max), ${state.unsafeLastValue.mkString(", ")})"
     }
   }
 
@@ -71,6 +77,8 @@ object TQueue {
         case hd +: tail => (tail, hd.some)
         case empty => (empty, none)
       }
+
+      override def toString: String = s"TQueue(circularBuffer($max), ${state.unsafeLastValue.mkString(", ")})"
     }
   }
 

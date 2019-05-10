@@ -11,7 +11,7 @@ class Monitor private[stm] () {
   private[this] val store: Store = /*_*/Store.forPlatform()/*_*/
   private[this] val rightUnit = Right(())
 
-  private[this] class RetryCallback(keys: Iterable[AnyRef]) {
+  private[this] class RetryCallback (keys: Iterable[AnyRef]) {
     @volatile var catsCb: Callback = _
     keys.foreach(listenTo)
     def invoke(): Unit = {

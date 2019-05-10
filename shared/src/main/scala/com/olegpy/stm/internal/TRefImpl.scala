@@ -11,4 +11,7 @@ private[stm] class TRefImpl[A](initial: A) extends TRef[A] {
   def set(a: A): STM[Unit] = STM.delay {
     STM.store.current().update(this, a)
   }
+
+  protected[stm] def unsafeLastValue: A =
+    STM.store.unsafeReadCommitted(this).asInstanceOf[A]
 }
