@@ -12,7 +12,7 @@ import java.util.concurrent.atomic.AtomicInteger
 
 object ConcurrentTests extends NondetIOSuite {
   val tests = Tests {
-    "concurrent transactions can complete w/o reevaluation" - {
+    "concurrent transactions can complete w/o reevaluation" - disabled {
       val mkEc = IO {
         ExecutionContext.fromExecutor(Executors.newSingleThreadExecutor())
       }

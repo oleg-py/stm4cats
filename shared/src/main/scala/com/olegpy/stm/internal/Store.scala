@@ -11,8 +11,8 @@ trait Store {
 
 object Store extends StorePlatform {
   trait Journal {
-    def writtenKeys: collection.Set[AnyRef]
-    def readKeys: collection.Set[AnyRef]
+    def writtenKeys: collection.Map[AnyRef, Long]
+    def readKeys: collection.Map[AnyRef, Long]
     def read(k: AnyRef): Any
     def update(k: AnyRef, v: Any): Unit
   }

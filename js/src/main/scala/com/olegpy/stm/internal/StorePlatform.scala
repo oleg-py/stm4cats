@@ -14,25 +14,25 @@ trait StorePlatform {
 
     class Journal(
       val uncommitted : js.Dynamic = js.Dynamic.newInstance(js.Dynamic.global.Map)(),
-      val readKeys: mutable.Set[AnyRef] = mutable.Set()
+      val readKeys: mutable.AnyRefMap[AnyRef, Long] = mutable.AnyRefMap.empty
     ) extends Store.Journal {
 
-      def writtenKeys: collection.Set[AnyRef] = {
-        val mSet = mutable.Set[AnyRef]()
+      def writtenKeys: mutable.AnyRefMap[AnyRef, Long] = {
+        val map = mutable.AnyRefMap.empty[AnyRef, Long]
         val it = uncommitted.keys().asInstanceOf[js.Iterable[AnyRef]].jsIterator()
         var entry = it.next()
         while (!entry.done) {
-          mSet += entry.value
+          map.update(entry.value, version)
           entry = it.next()
         }
-        mSet
+        map
       }
 
 
       def read(k: AnyRef): Any = {
         if (uncommitted.has(k)) uncommitted.get(k)
         else {
-          readKeys += k
+          readKeys.update(k, version)
           committed.get(k)
         }
       }
@@ -48,9 +48,11 @@ trait StorePlatform {
       )
     }
 
+    private[this] var version = 0L
     private[this] var theLog: Journal = _
     def current(): Store.Journal = theLog
     def transact[A](f: => A): A = {
+      version += 1
       theLog = new Journal
       val result = f
       val it = theLog.uncommitted.asInstanceOf[js.Iterable[js.Array[js.Any]]].jsIterator()

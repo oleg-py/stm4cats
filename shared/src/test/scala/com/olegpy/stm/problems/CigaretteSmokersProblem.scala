@@ -12,7 +12,7 @@ import cats.implicits._
 
 
 object CigaretteSmokersProblem extends NondetIOSuite {
-  override def ioTimeout: FiniteDuration = 30.seconds
+  override def ioTimeout: FiniteDuration = 2.seconds
 
   val tests = Tests {
     "Cigarette smokers problem" - {

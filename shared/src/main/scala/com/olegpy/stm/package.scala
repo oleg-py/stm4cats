@@ -95,7 +95,6 @@ package object stm {
 
     private[this] def atomicallyImpl[F[_]: Concurrent, A](stm: STM[A]): F[A] =
       Concurrent[F].suspend {
-        val waitId = globalLock.lastNotify
         var journal: Store.Journal = null
         try {
           val result = store.transact {
@@ -109,7 +108,7 @@ package object stm {
         } catch { case Retry =>
           val rk = journal.readKeys
           if (rk.isEmpty) throw new PotentialDeadlockException
-          globalLock.waitOn[F](waitId, rk) >> atomicallyImpl[F, A](stm)
+          globalLock.waitOn[F](rk) >> atomicallyImpl[F, A](stm)
         }
       }
   }

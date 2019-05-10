@@ -2,6 +2,7 @@ package com.olegpy.stm.internal
 
 import scala.annotation.tailrec
 import scala.collection.JavaConverters._
+import scala.collection.mutable
 import scala.util.control.NonFatal
 
 import java.{util => ju}
@@ -18,31 +19,32 @@ trait StorePlatform {
     class Journal(
       start: ju.WeakHashMap[AnyRef, (Any, Long)],
       val id: Long = mkId.getAndIncrement(),
-      val uncommitted: ju.HashMap[AnyRef, (Any, Long)] = new ju.HashMap(),
-      val reads: ju.HashSet[AnyRef] = new ju.HashSet()
+      val uncommitted: mutable.AnyRefMap[AnyRef, (Any, Long)] = mutable.AnyRefMap.empty,
+      val reads: mutable.AnyRefMap[AnyRef, Long] = mutable.AnyRefMap.empty
     ) extends Store.Journal {
-
-      def writtenKeys: collection.Set[AnyRef] = uncommitted.keySet().asScala
-      def readKeys: collection.Set[AnyRef] = reads.asScala
+      def writtenKeys: collection.Map[AnyRef, Long] = uncommitted.mapValues(_._2)
+      def readKeys: mutable.AnyRefMap[AnyRef, Long] = reads
 
       def read(k: AnyRef): Any = {
-        if (uncommitted.containsKey(k)) uncommitted.get(k)._1
+        if (uncommitted contains k) uncommitted(k)._1
         else {
-          reads.add(k)
           start.get(k) match {
-            case null => null
-            case t => t._1
+            case null =>
+              reads.update(k, Long.MinValue)
+              null
+            case (value, version) =>
+              reads.update(k, version)
+              value
           }
         }
       }
 
       def update(k: AnyRef, v: Any): Unit = {
-        uncommitted.put(k, (v, id))
-        ()
+        uncommitted.update(k, (v, id))
       }
 
       def copy() =
-        new Journal(start, id, new ju.HashMap(uncommitted), reads)
+        new Journal(start, id, uncommitted ++ Map(), reads)
     }
 
     final def current(): Journal = journal.get()
@@ -58,7 +60,7 @@ trait StorePlatform {
           val j = journal.get()
           if (hasConflict) {
             hasConflict = false
-            val ksi = j.reads.iterator()
+            val ksi = j.reads.keysIterator
             while (ksi.hasNext && !hasConflict) {
               val key = ksi.next()
               hasConflict = start.get(key) ne preCommit.get(key)
@@ -71,7 +73,7 @@ trait StorePlatform {
             // $COVERAGE-ON$
           } else {
             val end = new ju.WeakHashMap[AnyRef, (Any, Long)](preCommit)
-            end.putAll(j.uncommitted)
+            end.putAll(j.uncommitted.asJava)
             committed.compareAndSet(preCommit, end) || tryConsolidate()
           }
         }

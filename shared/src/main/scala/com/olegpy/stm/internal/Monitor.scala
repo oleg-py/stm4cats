@@ -1,9 +1,10 @@
 package com.olegpy.stm.internal
 
+import scala.collection.immutable.Queue
+
 import cats.effect.implicits._
 import cats.effect.Concurrent
 import cats.implicits._
-
 
 
 class Monitor private[stm] () {
@@ -11,81 +12,75 @@ class Monitor private[stm] () {
   private[this] val store: Store = /*_*/Store.forPlatform()/*_*/
   private[this] val rightUnit = Right(())
 
-  private[this] class RetryCallback (keys: Iterable[AnyRef]) {
-    @volatile var catsCb: Callback = _
-    keys.foreach(listenTo)
-    def invoke(): Unit = {
-      catsCb(rightUnit)
-    }
+  case class PendingUpdate(lastNotifyVersion: Long, cbs: Queue[Callback] = Queue.empty)
+  private[this] val emptyPU = PendingUpdate(Long.MinValue)
+  private[this] def read(k: AnyRef): PendingUpdate = store.current().read(k) match {
+    case p: PendingUpdate => p
+    case _ => emptyPU
+  }
 
-    def listenTo(key: AnyRef): Unit = {
-      addToSet(key, this)
-      addToSet(this, key)
-    }
+  private[this] def register(k: AnyRef, cb: Callback): Unit = {
+    val PendingUpdate(lnv, cbs) = read(k)
+    store.current().update(k, PendingUpdate(lnv, cbs enqueue cb))
+  }
 
-    private[this] def addToSet(key: AnyRef, value: Any): Unit = {
-      val j = store.current()
-      j.update(key, j.read(key) match {
-        case set: Set[Any @unchecked] => set + value
-        case _ => Set(value)
-      })
-    }
-
-    private[this] def removeFromSet(key: AnyRef, value: Any): Unit = {
-      val j = store.current()
-      j.update(key, j.read(key) match {
-        case set: Set[Any @unchecked] => set - value
-        case other => other
-      })
-    }
-
-    def removeAllKeys(): Unit = {
-      val j = store.current()
-      j.read(this) match {
-        case set: Set[AnyRef @unchecked] => set.foreach(removeFromSet(_, this))
-        // This might not be hit in a single test run, avoid fluctuating coverage
-        // $COVERAGE-OFF$
-        case _ =>
-        // $COVERAGE-ON$
-      }
-      j.update(this, null)
+  private[this] def unsub(cb: Callback): Unit = {
+    val j = store.current()
+    val keys = j.read(cb).asInstanceOf[collection.Set[AnyRef @unchecked]]
+    j.update(cb, null) // TODO - wipe?
+    val kit = if (keys eq null) Iterator.empty else keys.iterator
+    while (kit.hasNext) {
+      val k = kit.next()
+      val PendingUpdate(lnv, cbs) = j.read(k)
+      j.update(k, PendingUpdate(lnv, cbs.diff(List(cb))))
     }
   }
 
-  store.transact(store.current().update(this, 0))
-
-  def lastNotify: Int = store.transact { lastNotifyT }
-  private def lastNotifyT = store.current().read(this).asInstanceOf[Int]
-
-  def waitOn[F[_]](ln: Int, keys: Iterable[AnyRef])(implicit F: Concurrent[F]): F[Unit] =
-    F.suspend { store.transact {
-      if (ln == lastNotifyT) {
-        store.current().update(this, lastNotifyT + 1)
-        val rc = new RetryCallback(keys)
-        F.cancelable[Unit] { cb =>
-          rc.catsCb = cb
-          F.delay { store.transact(rc.removeAllKeys()) }
+  def waitOn[F[_]](lastSeen: collection.Map[AnyRef, Long])(implicit F: Concurrent[F]): F[Unit] =
+    F.cancelable { cb =>
+      store.transact {
+        var abort = false
+        val it = lastSeen.iterator
+        while (it.hasNext && !abort) {
+          val (k, ver) = it.next()
+          if (ver < read(k).lastNotifyVersion) abort = true
         }
-      } else F.unit
-    }}
-
-  def notifyOn[F[_]](keys: Iterable[AnyRef])(implicit F: Concurrent[F]): F[Unit] = F.suspend {
-    store.transact {
-      val j = store.current()
-      j.update(this, lastNotifyT + 1)
-      val cbs = Set.newBuilder[RetryCallback]
-      keys.foreach { key =>
-        j.read(key) match {
-          case s: Set[RetryCallback @unchecked] => cbs ++= s
-          case _ =>
+        if (abort) () => {
+          cb(rightUnit); F.unit
         }
-      }
-      val allJobs = cbs.result()
-      if (allJobs.isEmpty) F.unit
-      else {
-        allJobs.foreach(_.removeAllKeys())
-        F.delay(allJobs.foreach(_.invoke())).start.void
+        else {
+          store.current().update(cb, lastSeen.keySet)
+          val it = lastSeen.iterator
+          while (it.hasNext) register(it.next()._1, cb)
+          () => F.delay {
+            store.transact { unsub(cb) }
+          }
+        }
+      }.apply()
+    }
+
+  def notifyOn[F[_]](versions: collection.Map[AnyRef, Long])(implicit F: Concurrent[F]): F[Unit] =
+    F.suspend {
+      store.transact {
+        val qb = Queue.newBuilder[Callback]
+        val it = versions.iterator
+        val j = store.current()
+        while (it.hasNext) {
+          val (k, ver) = it.next()
+          val PendingUpdate(v2, cbs) = read(k)
+          if (ver > v2) {
+            qb ++= cbs
+            j.update(k, PendingUpdate(ver))
+          }
+        }
+        val callbacks = qb.result()
+        val qit = callbacks.iterator
+        while (qit.hasNext) {
+          unsub(qit.next())
+        }
+
+        if (callbacks.isEmpty) F.unit
+        else F.delay(callbacks.foreach(_(rightUnit))).start.void
       }
     }
-  }
 }

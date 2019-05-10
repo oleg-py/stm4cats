@@ -24,6 +24,7 @@ lazy val stm4cats = crossProject(JSPlatform, JVMPlatform)
   .in(file("."))
   .settings(
     name := "stm4cats",
+    fork in test := true,
     libraryDependencies ++= Seq(
       "org.typelevel" %%% "cats-effect" % "1.2.0",
       "com.lihaoyi" %%% "utest" % "0.6.7" % Test,
