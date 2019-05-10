@@ -28,9 +28,10 @@ private[stm] class Monitor {
     val j = store.current()
     val keys = j.read(cb).asInstanceOf[collection.Set[AnyRef @unchecked]]
     j.update(cb, null) // TODO - wipe?
-    val kit = // $COVERAGE-OFF$
+    val kit =
+    // $COVERAGE-OFF$
       if (keys eq null) Iterator.empty else keys.iterator
-      // $COVERAGE-ON$
+    // $COVERAGE-ON$
     while (kit.hasNext) {
       val k = kit.next()
       val PendingUpdate(lnv, cbs) = j.read(k)
