@@ -7,6 +7,7 @@ inThisBuild(Seq(
   version := "0.1.0-M1",
   crossScalaVersions := Seq("2.11.12", "2.12.8"),
   pgpPassphrase := sys.env.get("PGP_PASS").map(_.toArray),
+  licenses += ("MIT", url("http://opensource.org/licenses/MIT"))
 ))
 
 lazy val root = project.in(file("."))
