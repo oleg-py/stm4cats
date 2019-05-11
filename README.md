@@ -1,21 +1,20 @@
 # stm4cats
-![Sonatype Nexus (Snapshots)](https://img.shields.io/nexus/s/https/oss.sonatype.org/com.olegpy/stm4cats_2.12.svg)
+![Maven Central](https://img.shields.io/maven-central/v/com.olegpy/stm4cats_2.12.svg?color=06C)
 [![Build Status](https://travis-ci.org/oleg-py/stm4cats.svg?branch=master)](https://travis-ci.org/oleg-py/stm4cats)
 [![Coverage Status](https://coveralls.io/repos/github/oleg-py/stm4cats/badge.svg?branch=master)](https://coveralls.io/github/oleg-py/stm4cats?branch=master)
 
+
 An implementation of STM for any cats-effect compatible effect type.
 
-Experiment goals:
-* Radically different approach, lock-free instead of a global lock, and ThreadLocals instead of Reader-like structure.
-  * It's still to be figured out if it's faster than conventional implementation with a global lock, or not.
-* Keep everything as minimal as humanly possible. Right now there are only about 300 lines of code.
-  * However, you need to import `cats.implicits._` for all syntax to work
-* Scala.JS support is a must.
+Current stable version is `0.1.0-M1`, available for Scala 2.11 and 2.12 and Scala.JS 0.6:
+```scala
+// Use %%% for Scala.JS
+libraryDependencies += "com.olegpy" %% "stm4cats" % "0.1.0-M1"
+```
 
-## Add it
+Or, if you're feeling adventurous, a snapshot is build from `master` on each commit.
 ```scala
 resolvers += Resolver.sonatypeRepo("snapshots")
-// Use %%% for Scala.JS
 libraryDependencies += "com.olegpy" %% "stm4cats" % "0.1.0-SNAPSHOT"
 ```
 
@@ -60,6 +59,7 @@ val io = for {
 
 io.unsafeRunSync() // Well, not on JS
 ```
+
 ### Acknowledgements 
 My interest in STM, as well as some of API in stm4cats was influenced by:
 - [Talk](https://www.youtube.com/watch?v=d6WWmia0BPM) by @jdegoes and @wi101 on STM in ZIO
