@@ -1,5 +1,7 @@
 package com.olegpy.stm.misc
 
+import scala.util.Random
+
 import cats.implicits._
 import cats.effect.IO
 import cats.effect.concurrent.Deferred
@@ -12,25 +14,28 @@ object TQueueTests extends DeterministicIOSuite {
   val tests = Tests {
     "TQueue.bounded" - {
       val mkQ = TQueue.boundedIn[IO, Int](3)
+      "shows element with toString" - mkQ.flatMap(checkToString)
       "works in FIFO fashion" - mkQ.flatMap(isFifo)
       "doesn't block in inspect methods" - mkQ.flatMap(testNoBlocking)
-      "blocks on dequeue when empty" - mkQ.flatMap(blocksOnDequeue)
+      "blocks on dequeue and peek when empty" - mkQ.flatMap(blocksOnDequeue)
       "blocks on enqueue when full" - mkQ.flatMap(blocksOnEnqueue)
     }
 
     "TQueue.unbounded" - {
       val mkQ = TQueue.unboundedIn[IO, Int]
+      "shows element with toString" - mkQ.flatMap(checkToString)
       "works in FIFO fashion" - mkQ.flatMap(isFifo)
       "doesn't block in inspect methods" - mkQ.flatMap(testNoBlocking)
-      "blocks on dequeue when empty" - mkQ.flatMap(blocksOnDequeue)
+      "blocks on dequeue and peek when empty" - mkQ.flatMap(blocksOnDequeue)
       "never blocks on enqueue" - mkQ.flatMap(doesntBlockOnEnqueue)
     }
 
     "TQueue.synchronous" - {
       val mkQ = TQueue.synchronousIn[IO, Int]
+      "shows element with toString" - mkQ.flatMap(checkToString)
       "works in FIFO fashion" - mkQ.flatMap(isFifo)
       "doesn't block in inspect methods" - mkQ.flatMap(testNoBlocking)
-      "blocks on dequeue when empty" - mkQ.flatMap(blocksOnDequeue)
+      "blocks on dequeue and peek when empty" - mkQ.flatMap(blocksOnDequeue)
       "blocks on enqueue when full" - mkQ.flatMap(blocksOnEnqueue)
       "allows single element only" - mkQ.flatMap { queue =>
         queue.enqueueAll(List(number, number)).result
@@ -39,9 +44,10 @@ object TQueueTests extends DeterministicIOSuite {
 
     "TQueue.circularBuffer" - {
       val mkQ = TQueue.circularBufferIn[IO, Int](10)
+      "shows element with toString" - mkQ.flatMap(checkToString)
       "works in FIFO fashion" - mkQ.flatMap(isFifo)
       "doesn't block in inspect methods" - mkQ.flatMap(testNoBlocking)
-      "blocks on dequeue when empty" - mkQ.flatMap(blocksOnDequeue)
+      "blocks on dequeue and peek when empty" - mkQ.flatMap(blocksOnDequeue)
       "never blocks on enqueue" - mkQ.flatMap(doesntBlockOnEnqueue)
       "drops oldest elements on enqueue" - mkQ.flatMap { queue =>
         queue.enqueueAll(List.range(0, 20)).commit[IO] >>
@@ -82,7 +88,8 @@ object TQueueTests extends DeterministicIOSuite {
 
   private def blocksOnDequeue(q: TQueue[Int]): IO[Unit] =
     q.dequeueUpTo(Int.MaxValue).commit[IO] >>
-      blockUnblock(q.dequeue, q.enqueue(number))
+      blockUnblock(q.dequeue, q.enqueue(number)) >>
+      blockUnblock(q.peek, q.enqueue(number))
 
   private def blocksOnEnqueue(q: TQueue[Int]): IO[Unit] =
     q.enqueue(number).iterateUntilRetry.commit[IO] >>
@@ -97,5 +104,10 @@ object TQueueTests extends DeterministicIOSuite {
       q.dequeue.commit[IO].replicateA(expect.length).map { got =>
         assert(got == expect)
       }
+  }
+
+  private def checkToString(q: TQueue[Int]): IO[Unit] = {
+    val n = Random.nextInt()
+    q.enqueue(n).commit[IO] >> IO(assert(q.toString contains n.toString))
   }
 }
