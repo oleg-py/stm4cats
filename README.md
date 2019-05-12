@@ -34,12 +34,12 @@ def transfer(fromR: TRef[Int], toR: TRef[Int], amt: Int): STM[Unit] =
   for {
     from <- fromR.get
     if from >= amt // Or STM.check(from >= amt)
-    _ <- fromR.modify(_ - amt)
-    _ <- toR.modify(_ + amt)
+    _ <- fromR.update(_ - amt)
+    _ <- toR.update(_ + amt)
   } yield ()
   
 def freeMoney(toR: TRef[Int]): IO[Unit] = STM.atomically[IO] {
-  toR.modify(_ + 10)
+  toR.update(_ + 10)
 }
 
 val io = for {
